@@ -62,6 +62,12 @@ let container: HTMLElement | undefined;
 let toolbar: HTMLElement | undefined;
 let modeButton: HTMLButtonElement | undefined;
 let renderedBoxes: OverlayPopoverBox[] = [];
+let boxLayers: Partial<
+  Record<
+    OverlayMode,
+    { element: HTMLElement; boxes: OverlayPopoverBox[] }
+  >
+> = {};
 let popover: OverlayPopover | undefined;
 let regionBackdrop: HTMLElement | undefined;
 let regionFrame: HTMLElement | undefined;
@@ -293,6 +299,7 @@ export function closeOverlay(): void {
   toolbar = undefined;
   modeButton = undefined;
   renderedBoxes = [];
+  boxLayers = {};
   disposePopover();
   regionBackdrop = undefined;
   regionFrame = undefined;
@@ -394,6 +401,7 @@ function mountChip(chip: HTMLElement, showSourceLanguageToolbar = false): void {
     container.remove();
   }
   renderedBoxes = [];
+  boxLayers = {};
   disposePopover();
   toolbar = undefined;
   modeButton = undefined;
@@ -465,8 +473,10 @@ function reposition(): void {
   if (regionFrame && currentRect) {
     positionRectElement(regionFrame, currentRect);
   }
-  renderedBoxes.forEach((box) => {
-    positionRectElement(box.element, box.rect);
+  Object.values(boxLayers).forEach((layer) => {
+    layer.boxes.forEach((box) => {
+      positionRectElement(box.element, box.rect);
+    });
   });
   if (toolbar) {
     positionToolbar();
@@ -632,7 +642,7 @@ function createModeButton(): HTMLButtonElement {
     }
     mode = mode === "translation" ? "original" : "translation";
     selectedMode = mode;
-    renderBoxes();
+    showBoxLayer();
     updateModeButton();
   });
 
@@ -769,25 +779,46 @@ function renderBoxes(): void {
     return;
   }
   endSelection();
-  for (const box of renderedBoxes) {
-    box.element.remove();
+  for (const layer of Object.values(boxLayers)) {
+    layer.element.remove();
   }
   popover?.clearBoxes();
-  renderedBoxes = [];
+  boxLayers = {};
 
-  if (mode === "translation") {
-    renderTranslationBoxes(currentLayout, container);
-  } else {
-    renderSourceBoxes(currentLayout, container);
+  const modes: OverlayMode[] = hasTranslationText
+    ? ["translation", "original"]
+    : ["original"];
+  for (const layerMode of modes) {
+    const layer = document.createElement("div");
+    layer.className = "ocr-translate-overlay-box-layer";
+    container.append(layer);
+    const boxes =
+      layerMode === "translation"
+        ? renderTranslationBoxes(currentLayout, layer)
+        : renderSourceBoxes(currentLayout, layer);
+    applyBoxAngles(boxes);
+    boxLayers[layerMode] = { element: layer, boxes };
   }
-  applyBoxAngles();
+
+  showBoxLayer(false);
+}
+
+function showBoxLayer(dismissPopover = true): void {
+  if (dismissPopover) {
+    endSelection();
+    popover?.clearBoxes();
+  }
+  for (const [layerMode, layer] of Object.entries(boxLayers)) {
+    layer.element.hidden = layerMode !== mode;
+  }
+  renderedBoxes = boxLayers[mode]?.boxes ?? [];
 }
 
 // Tilts go on last, after every box has been fitted. `fitTextLayers` measures
 // with getBoundingClientRect, which reports the wider bounds a rotated element
 // covers rather than the box itself, and would size the spans to those.
-function applyBoxAngles(): void {
-  renderedBoxes.forEach(({ element, angle }) => {
+function applyBoxAngles(boxes: OverlayPopoverBox[]): void {
+  boxes.forEach(({ element, angle }) => {
     if (angle !== 0) {
       element.style.transform = `rotate(${angle}rad)`;
     }
@@ -797,7 +828,8 @@ function applyBoxAngles(): void {
 function renderTranslationBoxes(
   layout: OverlayLayout,
   overlayContainer: HTMLElement,
-): void {
+): OverlayPopoverBox[] {
+  const boxes: OverlayPopoverBox[] = [];
   const fontOptions: Array<{ vertical: boolean; expanded: boolean }> = [];
   // Without a per-paragraph split, one combined box, so the whole translation is
   // never misattributed to a single region.
@@ -811,15 +843,19 @@ function renderTranslationBoxes(
       vertical,
     );
     overlayContainer.append(box);
-    addRenderedBox({
-      element: box,
-      rect: layout.combinedRect,
-      angle: 0,
-      content: {
-        original: currentOriginalText,
-        translated: layout.combinedTranslation,
+    addRenderedBox(
+      boxes,
+      {
+        element: box,
+        rect: layout.combinedRect,
+        angle: 0,
+        content: {
+          original: currentOriginalText,
+          translated: layout.combinedTranslation,
+        },
       },
-    });
+      "translation",
+    );
     fontOptions.push({
       vertical,
       expanded: layout.combinedRect.width > layout.combinedSourceRect.width,
@@ -832,15 +868,19 @@ function renderTranslationBoxes(
         paragraph.vertical,
       );
       overlayContainer.append(box);
-      addRenderedBox({
-        element: box,
-        rect: paragraph.translationRect,
-        angle: paragraph.angle,
-        content: {
-          original: paragraph.original,
-          translated: paragraph.translated ?? "",
+      addRenderedBox(
+        boxes,
+        {
+          element: box,
+          rect: paragraph.translationRect,
+          angle: paragraph.angle,
+          content: {
+            original: paragraph.original,
+            translated: paragraph.translated ?? "",
+          },
         },
-      });
+        "translation",
+      );
       fontOptions.push({
         vertical: paragraph.vertical,
         expanded: paragraph.translationRect.width > paragraph.sourceRect.width,
@@ -848,16 +888,18 @@ function renderTranslationBoxes(
     });
   }
 
-  renderedBoxes.forEach((box, index) => {
+  boxes.forEach((box, index) => {
     const { vertical, expanded } = fontOptions[index];
     fitFontSize(box.element, vertical, expanded);
   });
+  return boxes;
 }
 
 function renderSourceBoxes(
   layout: OverlayLayout,
   overlayContainer: HTMLElement,
-): void {
+): OverlayPopoverBox[] {
+  const boxes: OverlayPopoverBox[] = [];
   if (hasTranslationText && !layout.segmented) {
     const box = createBox(
       layout.combinedSourceRect,
@@ -866,15 +908,19 @@ function renderSourceBoxes(
       0,
     );
     overlayContainer.append(box);
-    addRenderedBox({
-      element: box,
-      rect: layout.combinedSourceRect,
-      angle: 0,
-      content: {
-        original: currentOriginalText,
-        translated: layout.combinedTranslation,
+    addRenderedBox(
+      boxes,
+      {
+        element: box,
+        rect: layout.combinedSourceRect,
+        angle: 0,
+        content: {
+          original: currentOriginalText,
+          translated: layout.combinedTranslation,
+        },
       },
-    });
+      "original",
+    );
   } else {
     layout.paragraphs.forEach((paragraph) => {
       const rect = paragraph.sourceRect;
@@ -885,23 +931,32 @@ function renderSourceBoxes(
         paragraph.angle,
       );
       overlayContainer.append(box);
-      addRenderedBox({
-        element: box,
-        rect,
-        angle: paragraph.angle,
-        content: {
-          original: paragraph.original,
-          translated: paragraph.translated ?? "",
+      addRenderedBox(
+        boxes,
+        {
+          element: box,
+          rect,
+          angle: paragraph.angle,
+          content: {
+            original: paragraph.original,
+            translated: paragraph.translated ?? "",
+          },
         },
-      });
+        "original",
+      );
     });
   }
-  fitTextLayers();
+  fitTextLayers(boxes);
+  return boxes;
 }
 
-function addRenderedBox(box: OverlayPopoverBox): void {
-  const index = renderedBoxes.push(box) - 1;
-  popover?.attach(box.element, index);
+function addRenderedBox(
+  boxes: OverlayPopoverBox[],
+  box: OverlayPopoverBox,
+  boxMode: OverlayMode,
+): void {
+  const index = boxes.push(box) - 1;
+  popover?.attach(box.element, index, boxMode);
 }
 
 function createTranslationBox(
@@ -1150,9 +1205,9 @@ function createTextLayerPiece(
 // so the font size comes from what the span actually paints rather than from
 // the line's thickness; the length is then stretched to match. Every span is
 // measured before anything is written, so the boxes lay out once.
-function fitTextLayers(): void {
+function fitTextLayers(boxes: OverlayPopoverBox[]): void {
   const spans: HTMLElement[] = [];
-  for (const box of renderedBoxes) {
+  for (const box of boxes) {
     spans.push(
       ...box.element.querySelectorAll<HTMLElement>(
         ".ocr-translate-overlay-text-layer-line",
@@ -1502,10 +1557,11 @@ function moveCurrentLayout(dx: number, dy: number): void {
   if (currentLayout) {
     currentLayout = moveOverlayLayout(currentLayout, dx, dy);
   }
-  renderedBoxes = renderedBoxes.map((box) => ({
-    ...box,
-    rect: moveRect(box.rect, dx, dy),
-  }));
+  Object.values(boxLayers).forEach((layer) => {
+    layer.boxes.forEach((box) => {
+      box.rect = moveRect(box.rect, dx, dy);
+    });
+  });
 }
 
 function moveRect(rect: Rect, dx: number, dy: number): Rect {

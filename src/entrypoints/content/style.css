@@ -1079,6 +1079,10 @@
   pointer-events: none;
 }
 
+.ocr-translate-overlay-box-layer[hidden] {
+  display: none;
+}
+
 .ocr-translate-overlay-box {
   position: absolute;
   z-index: 1;

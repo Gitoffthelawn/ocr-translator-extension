@@ -57,7 +57,7 @@ interface PopoverView {
 }
 
 export interface OverlayPopover {
-  attach(box: HTMLElement, index: number): void;
+  attach(box: HTMLElement, index: number, mode: OverlayMode): void;
   dismiss(): boolean;
   clearBoxes(): void;
   reposition(): void;
@@ -82,10 +82,14 @@ export function createOverlayPopover(
 
   const state = (): OverlayPopoverState => options.getState();
 
-  function attach(box: HTMLElement, index: number): void {
+  function attach(
+    box: HTMLElement,
+    index: number,
+    mode: OverlayMode,
+  ): void {
     setBoxState(box, false);
     const hoverTarget =
-      state().mode === "translation" &&
+      mode === "translation" &&
       box.firstElementChild instanceof HTMLElement
         ? box.firstElementChild
         : box;
