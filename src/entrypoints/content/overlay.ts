@@ -802,9 +802,13 @@ function renderTranslationBoxes(
   // Without a per-paragraph split, one combined box, so the whole translation is
   // never misattributed to a single region.
   if (!layout.segmented) {
+    const vertical =
+      layout.paragraphs.length > 0 &&
+      layout.paragraphs.every((paragraph) => paragraph.vertical);
     const box = createTranslationBox(
       layout.combinedRect,
       layout.combinedTranslation,
+      vertical,
     );
     overlayContainer.append(box);
     addRenderedBox({
@@ -817,8 +821,7 @@ function renderTranslationBoxes(
       },
     });
     fontOptions.push({
-      vertical: layout.paragraphs.length > 0 &&
-        layout.paragraphs.every((paragraph) => paragraph.vertical),
+      vertical,
       expanded: layout.combinedRect.width > layout.combinedSourceRect.width,
     });
   } else {
@@ -826,6 +829,7 @@ function renderTranslationBoxes(
       const box = createTranslationBox(
         paragraph.translationRect,
         paragraph.translated ?? "",
+        paragraph.vertical,
       );
       overlayContainer.append(box);
       addRenderedBox({
@@ -903,6 +907,7 @@ function addRenderedBox(box: OverlayPopoverBox): void {
 function createTranslationBox(
   rect: Rect,
   text: string,
+  vertical: boolean,
 ): HTMLElement {
   const box = document.createElement("div");
   box.className =
@@ -915,6 +920,7 @@ function createTranslationBox(
 
   const panel = document.createElement("span");
   panel.className = "ocr-translate-overlay-translation-text";
+  panel.classList.toggle("is-vertical-source", vertical);
   panel.textContent = text;
   panel.dir = "auto";
   if (currentTargetLang) {
