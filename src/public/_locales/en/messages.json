@@ -430,6 +430,9 @@
   "panelAlreadyInTargetLanguage": {
     "message": "The text is already in the target language."
   },
+  "overlayMoveToolbar": {
+    "message": "Move toolbar"
+  },
   "overlayTranslationUnavailable": {
     "message": "Translation unavailable"
   },

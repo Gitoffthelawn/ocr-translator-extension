@@ -10,6 +10,7 @@ import { t } from "@/shared/i18n";
 import {
   CLOSE_ICON,
   COPY_ICON,
+  DRAG_HANDLE_ICON,
   PANEL_ICON,
   RETRANSLATE_ICON,
   SELECT_REGION_ICON,
@@ -60,6 +61,7 @@ const OVERLAY_SPEECH_OWNER = "overlay";
 let uiRoot: HTMLElement | undefined;
 let container: HTMLElement | undefined;
 let toolbar: HTMLElement | undefined;
+let toolbarPosition: { x: number; y: number } | undefined;
 let modeButton: HTMLButtonElement | undefined;
 let renderedBoxes: OverlayPopoverBox[] = [];
 let boxLayers: Partial<
@@ -298,6 +300,7 @@ export function closeOverlay(): void {
   container = undefined;
   toolbar = undefined;
   modeButton = undefined;
+  toolbarPosition = undefined;
   renderedBoxes = [];
   boxLayers = {};
   disposePopover();
@@ -513,6 +516,7 @@ function disposePopover(): void {
 function createToolbar(): HTMLElement {
   const bar = document.createElement("div");
   bar.className = "ocr-translate-overlay-toolbar";
+  bar.append(createToolbarDragHandle(bar));
 
   const modeButtonWrapper = document.createElement("span");
   modeButtonWrapper.className = "ocr-translate-overlay-mode-button-wrap";
@@ -593,6 +597,7 @@ function createToolbar(): HTMLElement {
 function createOcrRecoveryToolbar(): HTMLElement {
   const bar = document.createElement("div");
   bar.className = "ocr-translate-overlay-toolbar";
+  bar.append(createToolbarDragHandle(bar));
 
   const sourcePicker = mountControlPicker(
     config
@@ -1300,6 +1305,87 @@ function modeLang(textMode: OverlayMode): LangCode | undefined {
   return textMode === "original" ? currentSourceLang : currentTargetLang;
 }
 
+function createToolbarDragHandle(bar: HTMLElement): HTMLButtonElement {
+  const handle = document.createElement("button");
+  handle.type = "button";
+  handle.className = "ocr-translate-overlay-icon-button ocr-translate-overlay-drag";
+  handle.innerHTML = DRAG_HANDLE_ICON;
+  handle.title = t("overlayMoveToolbar");
+  handle.setAttribute("aria-label", handle.title);
+
+  let drag:
+    | { pointerId: number; x: number; y: number; left: number; top: number }
+    | undefined;
+
+  const move = (x: number, y: number): void => {
+    toolbarPosition = { x, y };
+    positionToolbar();
+    if (statusChip) {
+      positionChip(statusChip);
+    }
+  };
+
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || !event.isPrimary || drag) {
+      return;
+    }
+    drag = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      left: bar.offsetLeft,
+      top: bar.offsetTop,
+    };
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add("is-dragging");
+    event.preventDefault();
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (drag?.pointerId !== event.pointerId) {
+      return;
+    }
+    move(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y);
+  });
+  const stopDragging = (event: PointerEvent): void => {
+    if (drag?.pointerId !== event.pointerId) {
+      return;
+    }
+    drag = undefined;
+    handle.classList.remove("is-dragging");
+    if (handle.hasPointerCapture(event.pointerId)) {
+      handle.releasePointerCapture(event.pointerId);
+    }
+  };
+  handle.addEventListener("pointerup", stopDragging);
+  handle.addEventListener("pointercancel", stopDragging);
+  handle.addEventListener("lostpointercapture", stopDragging);
+  handle.addEventListener("keydown", (event) => {
+    const step = event.shiftKey ? 40 : 10;
+    let x = bar.offsetLeft;
+    let y = bar.offsetTop;
+    switch (event.key) {
+      case "ArrowLeft":
+        x -= step;
+        break;
+      case "ArrowRight":
+        x += step;
+        break;
+      case "ArrowUp":
+        y -= step;
+        break;
+      case "ArrowDown":
+        y += step;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    move(x, y);
+  });
+  return handle;
+}
+
 function positionToolbar(): void {
   if (!toolbar || !currentRect) {
     return;
@@ -1307,6 +1393,17 @@ function positionToolbar(): void {
   const rect = pageToViewportRect(currentRect);
   const width = toolbar.offsetWidth || 280;
   const height = toolbar.offsetHeight || 40;
+  if (toolbarPosition) {
+    toolbarPosition.x = clamp(
+      toolbarPosition.x, 8, Math.max(8, window.innerWidth - width - 8),
+    );
+    toolbarPosition.y = clamp(
+      toolbarPosition.y, 8, Math.max(8, window.innerHeight - height - 8),
+    );
+    toolbar.style.left = `${toolbarPosition.x}px`;
+    toolbar.style.top = `${toolbarPosition.y}px`;
+    return;
+  }
   const x = clamp(
     rect.x + rect.width / 2 - width / 2,
     8,

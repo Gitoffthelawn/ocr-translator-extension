@@ -377,6 +377,9 @@
   "panelAlreadyInTargetLanguage": {
     "message": "Текст уже написано мовою перекладу."
   },
+  "overlayMoveToolbar": {
+    "message": "Перемістити тулбар"
+  },
   "overlayTranslationUnavailable": {
     "message": "Переклад недоступний"
   },

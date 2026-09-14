@@ -1664,6 +1664,18 @@
   background: var(--ocr-danger-tint);
 }
 
+.ocr-translate-overlay-drag {
+  flex: none;
+  width: 18px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.ocr-translate-overlay-drag.is-dragging {
+  cursor: grabbing;
+}
+
 .ocr-translate-overlay-icon-button:disabled,
 .ocr-translate-overlay-icon-button:disabled:hover {
   color: var(--ocr-ink-muted);

@@ -377,6 +377,9 @@
   "panelAlreadyInTargetLanguage": {
     "message": "文本已经是目标语言。"
   },
+  "overlayMoveToolbar": {
+    "message": "移动工具栏"
+  },
   "overlayTranslationUnavailable": {
     "message": "翻译不可用"
   },

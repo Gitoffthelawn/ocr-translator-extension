@@ -1,3 +1,10 @@
+export const DRAG_HANDLE_ICON =
+  '<svg viewBox="0 0 12 20" width="12" height="20" fill="currentColor" aria-hidden="true" focusable="false">' +
+  '<circle cx="4" cy="5" r="1"/><circle cx="8" cy="5" r="1"/>' +
+  '<circle cx="4" cy="10" r="1"/><circle cx="8" cy="10" r="1"/>' +
+  '<circle cx="4" cy="15" r="1"/><circle cx="8" cy="15" r="1"/>' +
+  "</svg>";
+
 export const CLOSE_ICON =
   '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">' +
   '<path d="M5 5l10 10M15 5l-10 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>' +
