@@ -55,7 +55,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  chrome-smoke:
+  browser-chrome:
     needs: build
     runs-on: ubuntu-latest
 
@@ -82,10 +82,33 @@ jobs:
           name: chrome-extension
           path: .output/chrome-mv3
 
-      - name: Smoke test extension in Chromium
+      - name: Test extension in Chromium
         run: npm run test:browser:chrome
 
-  firefox-smoke:
+  browser-common:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Test common browser behavior
+        run: npm run test:browser:common
+
+  browser-firefox:
     needs: build
     runs-on: ubuntu-latest
 
@@ -109,7 +132,7 @@ jobs:
           name: firefox-extension
           path: .output/firefox-mv3
 
-      - name: Smoke test extension in Firefox
+      - name: Test extension in Firefox
         run: npm run test:browser:firefox
         env:
           SE_AVOID_STATS: true

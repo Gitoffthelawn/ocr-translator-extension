@@ -4,9 +4,9 @@ import { test } from "node:test";
 import { chromium, firefox } from "@playwright/test";
 import { transformWithOxc } from "vite";
 
-const source = await readFile(new URL("../../src/entrypoints/content/overlay-selection.ts", import.meta.url), "utf8");
+const source = await readFile(new URL("../../../src/entrypoints/content/overlay-selection.ts", import.meta.url), "utf8");
 const { code } = await transformWithOxc(source, "overlay-selection.ts");
-const css = await readFile(new URL("../../src/entrypoints/content/style.css", import.meta.url), "utf8");
+const css = await readFile(new URL("../../../src/entrypoints/content/style.css", import.meta.url), "utf8");
 
 for (const [name, browserType] of Object.entries({ chromium, firefox })) {
   test(`${name}: OCR dragging in a shadow root`, async () => {
