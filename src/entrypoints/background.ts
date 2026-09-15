@@ -8,6 +8,7 @@ import {
   createOffscreenWorker,
 } from "@/background/offscreen-host";
 import { startRouter } from "@/background/router";
+import { startUninstallFeedback } from "@/background/uninstall-feedback";
 import {
   OCR_MODELS,
   resolveOcrModel,
@@ -38,6 +39,7 @@ export default defineBackground(() => {
 
   startKeyboardCommand();
   startContextMenu(browser, localeReady);
+  startUninstallFeedback();
   startRouter(
     {
       settingsRepository,

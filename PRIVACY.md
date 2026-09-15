@@ -1,11 +1,11 @@
 # Privacy Policy
 
-Last updated: August 13, 2026
+Last updated: September 15, 2026
 
-Screen OCR Translator handles only the data needed to recognize and translate
-text from a screen region or image chosen by the user.
-The extension does not collect analytics, sell user data, or use user data
-for advertising.
+Screen OCR Translator handles only the data needed to provide the features
+described below and collect optional uninstall feedback.
+The extension does not collect analytics during normal use, sell user data, or
+use user data for advertising.
 
 ## Data handled by the extension
 
@@ -34,14 +34,23 @@ the extension removes its locally stored data.
 
 ## Limited use
 
-Data is used only to provide OCR, translation, and text-to-speech features. It
-is not sold, used for advertising, used to determine creditworthiness, or
-transferred for unrelated purposes.
+Data handled during normal extension use is used only to provide OCR,
+translation, and text-to-speech features. It is not sold, used for advertising,
+used to determine creditworthiness, or transferred for unrelated purposes.
 
 The use of information received from Google APIs will adhere to the Chrome Web
 Store User Data Policy, including the Limited Use requirements.
+
+## Optional feedback
+
+After the extension is uninstalled, the browser may open an optional feedback
+form hosted by [Tally](https://tally.so/help/terms-and-privacy).
+Submitted feedback may include the uninstall reason and optional comments. It
+does not ask for a name or email address.
 
 ## Contact
 
 For privacy questions, open an issue in the
 [project repository](https://github.com/OPerepadia/ocr-translator-extension/issues).
+Repository issues are public, so do not include personal or sensitive
+information.
