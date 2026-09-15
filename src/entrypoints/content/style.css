@@ -1144,6 +1144,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   padding: 0.2em 0.4em;
+  border: 1px solid rgba(15, 23, 42, 0.16);
   border-radius: var(--ocr-radius-box);
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(3px);
@@ -1155,7 +1156,6 @@
   hyphens: auto;
   overflow-wrap: normal;
   white-space: pre-wrap;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22);
 }
 
 .ocr-translate-overlay-translation-text.is-vertical-source {
