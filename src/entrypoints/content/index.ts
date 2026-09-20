@@ -69,6 +69,7 @@ import {
   startNavigationWatch,
 } from "./navigation-watch";
 import { getRenderedImageRect } from "./overlay-layout";
+import { getUiAnchor, watchUiModal } from "./modal-ui";
 import { languageName } from "./language-picker";
 import {
   cancelImagePickerOverlay,
@@ -140,16 +141,19 @@ export default defineContentScript({
     const localeReady = initializeI18n();
 
     let uiPromise: ReturnType<typeof createShadowRootUi> | undefined;
+    let stopModalWatch: (() => void) | undefined;
     const ensureUi = async (): Promise<void> => {
       try {
         await localeReady;
         const ui = await (uiPromise ??= createShadowRootUi(ctx, {
           name: "ocr-translate-ui",
           position: "inline",
-          anchor: "body",
+          anchor: getUiAnchor,
           // Prevent page shortcuts from intercepting UI keystrokes
           isolateEvents: true,
-          onMount: (container) => {
+          onMount: (container, _shadow, host) => {
+            stopModalWatch?.();
+            stopModalWatch = watchUiModal(host, container, closePageUi);
             container.lang = uiLanguage();
             container.dir = uiDirection();
             uiRoot = container;
@@ -160,9 +164,7 @@ export default defineContentScript({
         if (ctx.isInvalid) {
           return;
         }
-        if (!ui.uiContainer.isConnected) {
-          ui.mount();
-        }
+        ui.mount();
       } catch (error) {
         uiPromise = undefined;
         throw error;
@@ -293,6 +295,7 @@ export default defineContentScript({
     };
     browser.runtime.onMessage.addListener(handleRuntimeMessage);
     ctx.onInvalidated(() => {
+      stopModalWatch?.();
       selectionGeneration += 1;
       requestRunner.dispose();
       cancelSelectionOverlay();
@@ -308,11 +311,8 @@ export default defineContentScript({
   },
 });
 
-// The panel and overlay are anchored to a region of the page that was on screen
-// when the capture ran. A same-document navigation replaces that content while
-// our UI stays up, so drop everything and let the in-flight request finish
-// unseen.
-function closeOnNavigation(): void {
+// Navigation and modal dismissal invalidate the content behind the capture.
+function closePageUi(): void {
   selectionGeneration += 1;
   cancelActiveRequest();
   cancelSelectionOverlay();
@@ -328,6 +328,7 @@ function closeOnNavigation(): void {
   clearCaptureSnapshot();
   lastResult = undefined;
   lastRect = undefined;
+  lastContextImage = undefined;
   pendingText = "";
 }
 
@@ -343,7 +344,7 @@ async function runSelectionFlow(): Promise<void> {
   const generation = ++selectionGeneration;
   cancelSelectionOverlay();
   closeRegionOutline();
-  startNavigationWatch(closeOnNavigation);
+  startNavigationWatch(closePageUi);
   // Preload the OCR worker and model while the user is selecting a region,
   // so recognition can start as soon as the screenshot is ready.
   void sendRequest({ type: "PRELOAD_OCR" }).catch(() => {});
@@ -354,7 +355,7 @@ async function runSelectionFlow(): Promise<void> {
   }
   const viewportRect = await startSelectionOverlay(uiRoot, startImmediately);
 
-  if (!viewportRect) {
+  if (!viewportRect || generation !== selectionGeneration) {
     return;
   }
 
@@ -379,7 +380,7 @@ function startNewSelection(): void {
 }
 
 async function runImageFlow(imageUrl: string): Promise<void> {
-  startNavigationWatch(closeOnNavigation);
+  startNavigationWatch(closePageUi);
   void sendRequest({ type: "PRELOAD_OCR" }).catch(() => {});
 
   const imageRect = findImageRect(imageUrl);
@@ -403,7 +404,7 @@ async function runImagePickerFlow(sessionId: string): Promise<void> {
   }
   releaseSelectionDim();
   closeRegionOutline();
-  startNavigationWatch(closeOnNavigation);
+  startNavigationWatch(closePageUi);
   if (window === window.top) {
     void sendRequest({ type: "PRELOAD_OCR" }).catch(() => {});
   }
@@ -485,6 +486,7 @@ async function runCapture(
   source: OcrImageSource,
   imageRect?: Rect,
 ): Promise<void> {
+  const generation = selectionGeneration;
   closeRegionOutline();
   const viewportRect = imageRect ?? ("rect" in source ? source.rect : undefined);
   lastRect = viewportRect ? toPageRect(viewportRect) : undefined;
@@ -496,6 +498,9 @@ async function runCapture(
     getDisplayMode(),
     getDefaultOverlayMode(),
   ]);
+  if (generation !== selectionGeneration) {
+    return;
+  }
   displayMode = nextDisplayMode;
   resetOverlayMode(initialOverlayMode);
   // Head toward that view now so the loading spinner lands there; presentResult
@@ -514,6 +519,9 @@ async function runCapture(
     loadOcrSourceLanguages(),
     loadTranslationProviders(),
   ]);
+  if (generation !== selectionGeneration) {
+    return;
+  }
   activePipelineStage = undefined;
 
   // For region captures, keep the loading panel hidden until the background has

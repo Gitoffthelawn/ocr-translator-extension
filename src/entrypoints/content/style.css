@@ -182,6 +182,24 @@
   }
 }
 
+.ocr-translate-modal-surface {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+}
+
+.ocr-translate-modal-surface::backdrop {
+  background: transparent;
+  pointer-events: none;
+}
+
 /* Region picker */
 
 .ocr-translate-selection-overlay {
