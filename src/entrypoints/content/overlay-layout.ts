@@ -31,10 +31,7 @@ export interface OverlayParagraph {
   /** Tilt of both rects, about their own centre, in radians. Zero for upright
    * text, which is every paragraph the detector reports no tilted boxes for. */
   angle: number;
-  /** The recognized original text for this paragraph. For vertical paragraphs
-   * the detected columns are separated by newlines, so the original view breaks
-   * columns where the source image does. Display-only: the translation input
-   * is the joined `ocrText` line, never this. */
+  /** The recognized original text for this paragraph, as sent for translation. */
   original: string;
   /** The translated line, or null when the translation could not be split per
    * paragraph (see `segmented`). */
@@ -400,9 +397,7 @@ export function buildOverlayLayout(input: BuildOverlayInput): OverlayLayout {
         ? buildTranslationRect(sourceRect, input.rect, vertical)
         : sourceRect,
       angle,
-      original: vertical
-        ? group.texts.join("\n")
-        : (originalLines[group.paragraph] ?? ""),
+      original: originalLines[group.paragraph] ?? "",
       translated,
       lines,
       vertical,

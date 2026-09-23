@@ -317,7 +317,7 @@ describe("buildOverlayLayout", () => {
     expect(layout.paragraphs.map((p) => p.vertical)).toEqual([true, true]);
   });
 
-  it("breaks vertical originals at the detected column boundaries", () => {
+  it("keeps vertical originals joined within a paragraph", () => {
     const layout = buildOverlayLayout({
       blocks: [
         block(0, { x: 60, y: 0, width: 20, height: 60 }, "最初"),
@@ -332,8 +332,7 @@ describe("buildOverlayLayout", () => {
       orientation: "vertical",
     });
 
-    expect(layout.paragraphs[0].original).toBe("最初\n中央の列\n最後");
-    // The translation input line stays joined; only the display text breaks.
+    expect(layout.paragraphs[0].original).toBe("最初中央の列最後");
     expect(layout.combinedTranslation).toBe("Generic translated phrase");
   });
 
@@ -362,8 +361,7 @@ describe("buildOverlayLayout", () => {
     });
 
     expect(layout.paragraphs.map((p) => p.vertical)).toEqual([true, false]);
-    expect(layout.paragraphs[0].original).toBe("縦の\n文章");
-    // The horizontal paragraph keeps the joined line, not newline-split columns.
+    expect(layout.paragraphs[0].original).toBe("縦の文章");
     expect(layout.paragraphs[1].original).toBe("Footer");
   });
 });
