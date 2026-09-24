@@ -570,7 +570,7 @@ function createRecognizedExtras(): HTMLElement {
   const badge = createSourceBadge(currentSourceLang);
   const picker = mountControlPicker(
     config
-      ? createOcrSourceLanguagePicker(config.controls)
+      ? createOcrSourceLanguagePicker(config.controls, { position: "auto" })
       : undefined,
   );
   const wrapper = document.createElement("div");
@@ -594,6 +594,7 @@ function createTranslationExtras(): HTMLElement {
       ? createTargetLanguagePicker({
           controls,
           target: currentTargetLang,
+          position: "auto",
           onSelect: (targetLang) => {
             currentTargetLang = targetLang;
           },
