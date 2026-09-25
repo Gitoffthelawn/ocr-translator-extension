@@ -424,17 +424,14 @@ function ensurePopup(): HTMLElement {
   // headers instead.
   const title = document.createElement("strong");
   title.className = "ocr-translate-popup-title";
-  const titleIcon = document.createElement("span");
-  titleIcon.className = "ocr-translate-popup-title-icon";
   const logo = document.createElement("img");
   const getExtensionUrl = browser.runtime.getURL as (path: string) => string;
   logo.src = getExtensionUrl("icon/ocr_icon_big.svg");
   logo.alt = "";
   logo.setAttribute("aria-hidden", "true");
-  titleIcon.append(logo);
   const titleText = document.createElement("span");
   titleText.textContent = t("extensionName");
-  title.append(titleIcon, titleText);
+  title.append(logo, titleText);
 
   const topbar = document.createElement("div");
   topbar.className = "ocr-translate-popup-topbar";
@@ -767,11 +764,7 @@ function createTranslationHeader(): HTMLElement {
   heading.textContent = t("panelTranslationHeading");
   headingGroup.append(heading, createTranslationExtras());
 
-  const actionGroup = document.createElement("div");
-  actionGroup.className = "ocr-translate-popup-section-actions";
-  actionGroup.append(createCopyButton(() => ""));
-
-  header.append(headingGroup, actionGroup);
+  header.append(headingGroup);
 
   return header;
 }

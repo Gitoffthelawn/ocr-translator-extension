@@ -35,7 +35,7 @@
   --ocr-panel-bg:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.98)),
     #ffffff;
-  --ocr-topbar-bg: linear-gradient(180deg, #ffffff, #f1f5f9);
+  --ocr-topbar-bg: linear-gradient(180deg, #ffffff, #f7f9fb);
   --ocr-field-bg:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(248, 250, 252, 0.92)),
     #f8fafc;
@@ -71,9 +71,9 @@
   --ocr-danger: #dc2626;
   --ocr-danger-tint: rgba(220, 38, 38, 0.08);
   --ocr-success: #16a34a;
-  --ocr-badge-ink: #e8590c;
-  --ocr-badge-bg: #fff4ed;
-  --ocr-badge-border: rgba(232, 89, 12, 0.25);
+  --ocr-badge-ink: #b67852;
+  --ocr-badge-bg: #fcf7f3;
+  --ocr-badge-border: rgba(166, 112, 76, 0.2);
 
   /* Not the accent: these marks land on the captured picture and must stay
      distinguishable from it. */
@@ -134,7 +134,7 @@
     --ocr-panel-bg:
       linear-gradient(180deg, rgba(28, 32, 36, 0.94), rgba(18, 22, 25, 0.98)),
       #121619;
-    --ocr-topbar-bg: linear-gradient(180deg, #22272b, #171b1f);
+    --ocr-topbar-bg: linear-gradient(180deg, #20252a, #1b2024);
     --ocr-field-bg:
       linear-gradient(180deg, rgba(27, 32, 36, 0.96), rgba(20, 24, 28, 0.98)),
       #15191d;
@@ -166,9 +166,9 @@
     --ocr-danger: #f87171;
     --ocr-danger-tint: rgba(248, 113, 113, 0.12);
     --ocr-success: #4ade80;
-    --ocr-badge-ink: #ffa94d;
-    --ocr-badge-bg: rgba(232, 89, 12, 0.14);
-    --ocr-badge-border: rgba(232, 89, 12, 0.32);
+    --ocr-badge-ink: #c6a080;
+    --ocr-badge-bg: rgba(198, 160, 128, 0.08);
+    --ocr-badge-border: rgba(198, 160, 128, 0.2);
 
     --ocr-shadow-float:
       0 2px 8px rgba(0, 0, 0, 0.32), 0 18px 36px rgba(0, 0, 0, 0.4);
@@ -480,14 +480,6 @@
   }
 }
 
-.ocr-translate-popup::before {
-  content: "";
-  flex: none;
-  height: 3px;
-  border-radius: 7px 7px 0 0;
-  background: var(--ocr-accent);
-}
-
 /* touch-action: none lets pointer dragging work on touch screens. */
 .ocr-translate-popup-resize {
   position: absolute;
@@ -526,8 +518,8 @@
   justify-content: space-between;
   gap: 8px;
   flex: none;
-  padding: 10px 16px 9px;
-  border-radius: 4px 4px 0 0;
+  padding: 8px 12px;
+  border-radius: 7px 7px 0 0;
   border-bottom: 1px solid var(--ocr-line);
   background: var(--ocr-topbar-bg);
 }
@@ -536,21 +528,19 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--ocr-ink-strong);
+  /* Keep the title clear of the resize handle. */
+  margin-left: 5px;
+  color: var(--ocr-ink);
   font-size: var(--ocr-size-title);
   font-weight: 700;
   letter-spacing: var(--ocr-tracking-title);
 }
 
-.ocr-translate-popup-title-icon {
-  display: inline-flex;
-  flex: none;
-}
-
-.ocr-translate-popup-title-icon img {
+.ocr-translate-popup-title img {
   display: block;
-  width: 28px;
-  height: 28px;
+  flex: none;
+  width: 24px;
+  height: 24px;
   border-radius: 5px;
 }
 
@@ -952,12 +942,12 @@
   flex: none;
   border: 1px solid var(--ocr-badge-border);
   border-radius: var(--ocr-radius-pill);
-  padding: 3px 9px;
+  padding: 3px 8px;
   color: var(--ocr-badge-ink);
   background: var(--ocr-badge-bg);
   font-family: var(--ocr-font);
-  font-size: var(--ocr-size-ui);
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   line-height: var(--ocr-leading-ui);
 }
 
