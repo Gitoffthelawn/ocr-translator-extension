@@ -67,6 +67,9 @@ export class RegionGrouper {
     if (eligible.length === 0) {
       return { groups: [], regionCount: 0, matchedLineCount: 0 };
     }
+    if (eligible.length === 1) {
+      return { groups: [eligible], regionCount: 0, matchedLineCount: 0 };
+    }
     if (!source) {
       throw new Error("Text-region grouping requires source image pixels.");
     }
