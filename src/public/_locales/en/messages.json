@@ -197,6 +197,9 @@
   "optionsOpenSourceNote": {
     "message": "Screen OCR Translator is open-source software licensed under the Mozilla Public License 2.0."
   },
+  "optionsPrivacyPolicy": {
+    "message": "Privacy policy"
+  },
   "optionsVersion": {
     "message": "Version $1",
     "description": "$1 is the extension version number."

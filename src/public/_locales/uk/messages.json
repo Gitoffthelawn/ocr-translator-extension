@@ -173,6 +173,9 @@
   "optionsOpenSourceNote": {
     "message": "Screen OCR Translator — це розширення з відкритим кодом, що поширюється за ліцензією Mozilla Public License 2.0."
   },
+  "optionsPrivacyPolicy": {
+    "message": "Політика конфіденційності"
+  },
   "optionsVersion": {
     "message": "Версія $1"
   },

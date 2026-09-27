@@ -77,10 +77,9 @@ async function initOptions(): Promise<void> {
     }
   }
 
-  elements.versionText.textContent = t(
-    "optionsVersion",
-    browser.runtime.getManifest().version,
-  );
+  const version = browser.runtime.getManifest().version;
+  elements.versionText.textContent = t("optionsVersion", version);
+  elements.versionText.href = `https://github.com/OPerepadia/ocr-translator-extension/releases/tag/v${version}`;
   const isFirefox = import.meta.env.BROWSER === "firefox";
   elements.storeLink.href = isFirefox
     ? "https://addons.mozilla.org/firefox/addon/screen-ocr-translator/"
@@ -607,7 +606,7 @@ type OptionsElements = ReturnType<typeof getOptionsElements>;
 
 function getOptionsElements(): {
   form: HTMLFormElement;
-  versionText: HTMLElement;
+  versionText: HTMLAnchorElement;
   storeLink: HTMLAnchorElement;
   translationProviderSelect: HTMLSelectElement;
   googleProviderNote: HTMLElement;
@@ -637,7 +636,7 @@ function getOptionsElements(): {
   llmTimeoutInput: HTMLInputElement;
 } {
   const form = app.querySelector<HTMLFormElement>("form");
-  const versionText = app.querySelector<HTMLElement>(".about-version");
+  const versionText = app.querySelector<HTMLAnchorElement>(".about-version");
   const storeLink = app.querySelector<HTMLAnchorElement>(".about-store-link");
   const translationProviderSelect = app.querySelector<HTMLSelectElement>(
     "select[name='translationProvider']",

@@ -173,6 +173,9 @@
   "optionsOpenSourceNote": {
     "message": "Screen OCR Translator 是一款根据 Mozilla Public License 2.0 许可证发布的开源软件。"
   },
+  "optionsPrivacyPolicy": {
+    "message": "隐私政策"
+  },
   "optionsVersion": {
     "message": "版本 $1"
   },
