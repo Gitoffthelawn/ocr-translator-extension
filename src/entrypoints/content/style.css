@@ -1755,6 +1755,10 @@
   outline-offset: var(--ocr-focus-offset);
 }
 
+.ocr-translate-popup-langpill-item:focus-visible {
+  outline-offset: calc(-1 * var(--ocr-focus-width));
+}
+
 /* Text fields keep the native idiom: border plus ring. */
 .ocr-translate-popup-langpill-search:focus,
 .ocr-translate-popup-editable:focus {
