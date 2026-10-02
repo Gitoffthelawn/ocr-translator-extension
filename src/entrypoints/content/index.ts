@@ -20,7 +20,7 @@ import type {
 import {
   getDefaultOverlayMode,
   getDisplayMode,
-  getStartOcrImmediately,
+  getAdjustSelection,
   type DisplayMode,
 } from "@/shared/storage";
 import { createRequestId } from "@/shared/request-id";
@@ -357,11 +357,11 @@ async function runSelectionFlow(): Promise<void> {
   // so recognition can start as soon as the screenshot is ready.
   void sendRequest({ type: "PRELOAD_OCR" }).catch(() => {});
 
-  const startImmediately = await getStartOcrImmediately();
+  const adjustSelection = await getAdjustSelection();
   if (generation !== selectionGeneration) {
     return;
   }
-  const viewportRect = await startSelectionOverlay(uiRoot, startImmediately);
+  const viewportRect = await startSelectionOverlay(uiRoot, adjustSelection);
 
   if (!viewportRect || generation !== selectionGeneration) {
     return;

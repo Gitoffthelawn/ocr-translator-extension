@@ -4,7 +4,7 @@ import {
   defaultSettings,
   getDefaultOverlayMode,
   getDisplayMode,
-  getStartOcrImmediately,
+  getAdjustSelection,
   getUiLocale,
   setUiLocale,
   UI_LOCALES,
@@ -88,14 +88,30 @@ describe("storage defaults", () => {
     },
   );
 
-  it("waits for confirmation when immediate OCR is not enabled", async () => {
+  it("skips the adjustment step by default", async () => {
     stubStorage({});
-    await expect(getStartOcrImmediately()).resolves.toBe(false);
+    await expect(getAdjustSelection()).resolves.toBe(false);
   });
 
-  it("starts OCR immediately when enabled", async () => {
-    stubStorage({ startOcrImmediately: true });
-    await expect(getStartOcrImmediately()).resolves.toBe(true);
+  it("reads the adjustment setting", async () => {
+    stubStorage({ adjustSelection: true });
+    await expect(getAdjustSelection()).resolves.toBe(true);
+  });
+
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    "migrates startOcrImmediately=%j to adjustSelection=%j",
+    async (startOcrImmediately, adjustSelection) => {
+      stubStorage({ startOcrImmediately });
+      await expect(getAdjustSelection()).resolves.toBe(adjustSelection);
+    },
+  );
+
+  it("prefers the adjustment setting over the legacy one", async () => {
+    stubStorage({ adjustSelection: false, startOcrImmediately: false });
+    await expect(getAdjustSelection()).resolves.toBe(false);
   });
 
   it("uses default settings when none are saved", async () => {

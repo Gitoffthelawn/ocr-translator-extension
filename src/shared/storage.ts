@@ -32,7 +32,11 @@ export type DisplayMode = "panel" | "overlay";
 const DISPLAY_MODE_KEY = "displayMode";
 const DEFAULT_DISPLAY_MODE: DisplayMode = "overlay";
 
-const START_OCR_IMMEDIATELY_KEY = "startOcrImmediately";
+const ADJUST_SELECTION_KEY = "adjustSelection";
+// Older versions saved the inverse setting under this key.
+// TODO: Remove this key, its fallback in getAdjustSelection, and the migration
+// tests a release or two after 0.19.0.
+const LEGACY_START_OCR_IMMEDIATELY_KEY = "startOcrImmediately";
 
 export async function getDisplayMode(): Promise<DisplayMode> {
   try {
@@ -47,19 +51,24 @@ export async function setDisplayMode(mode: DisplayMode): Promise<void> {
   await browser.storage.local.set({ [DISPLAY_MODE_KEY]: mode });
 }
 
-export async function getStartOcrImmediately(): Promise<boolean> {
+export async function getAdjustSelection(): Promise<boolean> {
   try {
-    const values = await browser.storage.local.get(START_OCR_IMMEDIATELY_KEY);
-    return values[START_OCR_IMMEDIATELY_KEY] === true;
+    const values = await browser.storage.local.get([
+      ADJUST_SELECTION_KEY,
+      LEGACY_START_OCR_IMMEDIATELY_KEY,
+    ]);
+    const adjustSelection = values[ADJUST_SELECTION_KEY];
+    if (typeof adjustSelection === "boolean") {
+      return adjustSelection;
+    }
+    return values[LEGACY_START_OCR_IMMEDIATELY_KEY] === false;
   } catch {
     return false;
   }
 }
 
-export async function setStartOcrImmediately(enabled: boolean): Promise<void> {
-  await browser.storage.local.set({
-    [START_OCR_IMMEDIATELY_KEY]: enabled,
-  });
+export async function setAdjustSelection(enabled: boolean): Promise<void> {
+  await browser.storage.local.set({ [ADJUST_SELECTION_KEY]: enabled });
 }
 
 const DEFAULT_OVERLAY_MODE_KEY = "defaultOverlayMode";

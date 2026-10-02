@@ -17,10 +17,10 @@ import {
   createSettingsRepository,
   getDefaultOverlayMode,
   getDisplayMode,
-  getStartOcrImmediately,
+  getAdjustSelection,
   setDisplayMode,
   setDefaultOverlayMode,
-  setStartOcrImmediately,
+  setAdjustSelection,
   setUiLocale,
   normalizeUiLocale,
 } from "@/shared/storage";
@@ -171,10 +171,10 @@ async function initOptions(): Promise<void> {
       (error: unknown) => showSaveError(error),
     );
   });
-  elements.startOcrImmediatelyInput.checked = await getStartOcrImmediately();
-  elements.startOcrImmediatelyInput.addEventListener("change", () => {
+  elements.adjustSelectionInput.checked = await getAdjustSelection();
+  elements.adjustSelectionInput.addEventListener("change", () => {
     queueSave(() =>
-      setStartOcrImmediately(elements.startOcrImmediatelyInput.checked),
+      setAdjustSelection(elements.adjustSelectionInput.checked),
     ).then(
       () => showStatus(t("commonSaved")),
       (error: unknown) => showSaveError(error),
@@ -615,7 +615,7 @@ function getOptionsElements(): {
   displayModeSelect: HTMLSelectElement;
   uiLocaleSelect: HTMLSelectElement;
   defaultOverlayModeSelect: HTMLSelectElement;
-  startOcrImmediatelyInput: HTMLInputElement;
+  adjustSelectionInput: HTMLInputElement;
   ocrWebGpuInput: HTMLInputElement;
   ocrWebGpuNote: HTMLElement;
   ocrWebGpuStatus: HTMLElement;
@@ -659,8 +659,8 @@ function getOptionsElements(): {
   const defaultOverlayModeSelect = app.querySelector<HTMLSelectElement>(
     "select[name='defaultOverlayMode']",
   );
-  const startOcrImmediatelyInput = app.querySelector<HTMLInputElement>(
-    "input[name='startOcrImmediately']",
+  const adjustSelectionInput = app.querySelector<HTMLInputElement>(
+    "input[name='adjustSelection']",
   );
   const ocrWebGpuInput = app.querySelector<HTMLInputElement>(
     "input[name='ocrWebGpu']",
@@ -716,7 +716,7 @@ function getOptionsElements(): {
     !displayModeSelect ||
     !uiLocaleSelect ||
     !defaultOverlayModeSelect ||
-    !startOcrImmediatelyInput ||
+    !adjustSelectionInput ||
     !ocrWebGpuInput ||
     !ocrWebGpuNote ||
     !ocrWebGpuStatus ||
@@ -750,7 +750,7 @@ function getOptionsElements(): {
     displayModeSelect,
     uiLocaleSelect,
     defaultOverlayModeSelect,
-    startOcrImmediatelyInput,
+    adjustSelectionInput,
     ocrWebGpuInput,
     ocrWebGpuNote,
     ocrWebGpuStatus,

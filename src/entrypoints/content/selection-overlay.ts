@@ -43,7 +43,7 @@ export function cancelSelectionOverlay(): void {
 // CSS pixels; the caller pairs them with the current viewport size.
 export function startSelectionOverlay(
   container: HTMLElement,
-  startImmediately = false,
+  adjustSelection = true,
 ): Promise<Rect | null> {
   return new Promise((resolve) => {
     releaseSelectionDim();
@@ -78,7 +78,7 @@ export function startSelectionOverlay(
 
     const selection = document.createElement("div");
     selection.className = "ocr-translate-selection-rect";
-    if (startImmediately) {
+    if (!adjustSelection) {
       // Hide the handles
       selection.classList.add("is-immediate");
     }
@@ -219,11 +219,11 @@ export function startSelectionOverlay(
         return;
       }
 
-      if (startImmediately) {
+      if (adjustSelection) {
+        enterAdjustMode(rect);
+      } else {
         hint.style.display = "none";
         cleanup(rect);
-      } else {
-        enterAdjustMode(rect);
       }
     }
 

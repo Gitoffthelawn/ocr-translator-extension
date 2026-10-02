@@ -191,11 +191,11 @@
   "optionsGpuHint": {
     "message": "使用 WebGPU 加速文字识别。实际性能因浏览器、操作系统和硬件而异。WebGPU 不可用时将回退到 CPU。"
   },
-  "optionsStartOcrImmediately": {
-    "message": "立即开始识别"
+  "optionsAdjustSelection": {
+    "message": "识别前调整选区"
   },
-  "optionsStartOcrImmediatelyHint": {
-    "message": "跳过选区调整，松开鼠标后立即开始识别。"
+  "optionsAdjustSelectionHint": {
+    "message": "可在文字识别开始前移动选区或调整其大小。"
   },
   "optionsSee": {
     "message": "查看"

@@ -191,11 +191,11 @@
   "optionsGpuHint": {
     "message": "WebGPUを使用して文字認識を実行します。ブラウザー、OS、ハードウェアによっては、処理が速くなる場合もあれば、遅くなる場合もあります。利用できない場合はCPUを使用します。"
   },
-  "optionsStartOcrImmediately": {
-    "message": "文字認識をすぐに開始"
+  "optionsAdjustSelection": {
+    "message": "文字認識の前に範囲を調整"
   },
-  "optionsStartOcrImmediatelyHint": {
-    "message": "範囲の調整を省略し、マウスボタンを離すとすぐに文字認識を開始します。"
+  "optionsAdjustSelectionHint": {
+    "message": "文字認識が始まる前に、選択範囲を移動したりサイズを変更したりできます。"
   },
   "optionsSee": {
     "message": "参考："

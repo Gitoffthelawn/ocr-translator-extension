@@ -217,11 +217,11 @@
   "optionsGpuHint": {
     "message": "Runs text recognition on WebGPU. Depending on your browser, OS, and hardware, this may make it faster or slower. Falls back to CPU if not available."
   },
-  "optionsStartOcrImmediately": {
-    "message": "Start OCR immediately"
+  "optionsAdjustSelection": {
+    "message": "Adjust selection before recognition"
   },
-  "optionsStartOcrImmediatelyHint": {
-    "message": "Skip the adjustment step and start recognition as soon as you release the mouse."
+  "optionsAdjustSelectionHint": {
+    "message": "Move or resize the selected area before text recognition starts."
   },
   "optionsSee": {
     "message": "See",
