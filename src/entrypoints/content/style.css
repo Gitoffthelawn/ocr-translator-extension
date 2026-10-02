@@ -209,6 +209,7 @@
   cursor: crosshair;
   user-select: none;
   -webkit-user-select: none;
+  outline: none;
 }
 
 /* Once a rectangle exists this shrinks to it and spotlights it with a huge

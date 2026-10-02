@@ -53,6 +53,7 @@ export function startSelectionOverlay(
 
     const overlay = document.createElement("div");
     overlay.className = "ocr-translate-selection-overlay";
+    overlay.tabIndex = -1;
 
     const dim = document.createElement("div");
     dim.className = "ocr-translate-selection-dim";
@@ -108,6 +109,8 @@ export function startSelectionOverlay(
     controls.append(runButton, cancelButton);
     overlay.append(controls);
     container.append(overlay);
+    // Take focus from a page iframe, which would otherwise swallow Escape.
+    overlay.focus({ preventScroll: true });
 
     function cleanup(result: Rect | null): void {
       document.removeEventListener("keydown", onKeyDown, true);
