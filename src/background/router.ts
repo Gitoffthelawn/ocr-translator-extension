@@ -45,6 +45,8 @@ export interface RouterDependencies {
   captureVisibleArea(args: { rect: Rect; viewport: Viewport }): Promise<Blob>;
   loadImage(url: string, pageUrl?: string): Promise<Blob>;
   createOcrProvider(settings: Settings["ocr"]): OcrProvider;
+  /** Free the cached OCR provider's worker and models. */
+  releaseOcrProvider(): void;
   createTranslationProvider(
     settings: Settings["translation"],
   ): TranslationProvider;
@@ -57,6 +59,15 @@ export function startRouter(
   dependencies: RouterDependencies,
   localeReady: Promise<unknown> = Promise.resolve(),
 ): void {
+  const withKeepAlive = createKeepAlive(
+    () => browser.runtime.getPlatformInfo(),
+    KEEPALIVE_INTERVAL_MS,
+    {
+      lingerMs: WARM_MS,
+      onIdle: () => dependencies.releaseOcrProvider(),
+    },
+  );
+
   onRequest(async (message, sender) => {
     await localeReady;
     const messageSender = sender as
@@ -205,14 +216,14 @@ async function handleSpeakRequest(
 }
 
 // Firefox unloads the non-persistent event page after a short idle period
-// (~30s in practice; see Bugzilla 1851373), which kills in-flight OCR and
-// translation. Calling a cheap extension API every 20s resets the idle timer
-// while any long-running background request is active.
+// (~30s in practice; see Bugzilla 1851373), and Chrome stops the service
+// worker the same way. Either kills in-flight OCR and translation, and drops
+// the loaded OCR models. Calling a cheap extension API every 20s resets the
+// idle timer while any background request is active.
 const KEEPALIVE_INTERVAL_MS = 20_000;
-const withKeepAlive = createKeepAlive(
-  () => browser.runtime.getPlatformInfo(),
-  KEEPALIVE_INTERVAL_MS,
-);
+// Keep the background, and with it the loaded OCR models, up this long after
+// the last request, so the next capture skips the model cold start.
+const WARM_MS = 5 * 60_000;
 
 // Pipeline requests the content script can still cancel, by request id.
 const inFlight = new Map<string, AbortController>();

@@ -43,6 +43,7 @@ function invoke(
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -180,6 +181,35 @@ describe("background router", () => {
 
     expect(createOcrProvider).toHaveBeenCalledWith(ocr);
     expect(preload).toHaveBeenCalledOnce();
+  });
+
+  it("releases the OCR provider after five idle minutes", async () => {
+    vi.useFakeTimers();
+    let listener: MessageListener | undefined;
+    vi.stubGlobal("browser", {
+      runtime: {
+        onMessage: {
+          addListener: vi.fn((next: MessageListener) => {
+            listener = next;
+          }),
+        },
+        getPlatformInfo: vi.fn(async () => ({})),
+      },
+    });
+    const releaseOcrProvider = vi.fn();
+
+    startRouter({
+      captureStore,
+      settingsRepository: { get: async () => ({ ocr: {} }) },
+      createOcrProvider: () => ({ preload: async () => {} }),
+      releaseOcrProvider,
+    } as unknown as RouterDependencies);
+    await invoke(listener, { type: "PRELOAD_OCR" }, {});
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000 - 1);
+    expect(releaseOcrProvider).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(releaseOcrProvider).toHaveBeenCalledOnce();
   });
 
   it("reports the saved default OCR source language", async () => {

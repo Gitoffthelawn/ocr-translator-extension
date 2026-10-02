@@ -47,6 +47,7 @@ export default defineBackground(() => {
       captureVisibleArea,
       loadImage,
       createOcrProvider,
+      releaseOcrProvider,
       createTranslationProvider,
       detectLanguage,
       speakText,
@@ -65,9 +66,7 @@ function createOcrProvider(settings: Settings["ocr"]): OcrProvider {
     return cachedOcrProvider.provider;
   }
 
-  void cachedOcrProvider?.provider
-    .dispose?.()
-    ?.catch((error) => console.error("OCR provider dispose failed", error));
+  releaseOcrProvider();
 
   // Resolve asset URLs here, in the composition root, so providers stay free of
   // any browser-API dependency.
@@ -87,6 +86,13 @@ function createOcrProvider(settings: Settings["ocr"]): OcrProvider {
     ocrRegistry.paddle(config);
   cachedOcrProvider = { key, provider };
   return provider;
+}
+
+function releaseOcrProvider(): void {
+  void cachedOcrProvider?.provider
+    .dispose?.()
+    ?.catch((error) => console.error("OCR provider dispose failed", error));
+  cachedOcrProvider = null;
 }
 
 // Fields a provider reads at construction; sourceLang is a per-request input.
