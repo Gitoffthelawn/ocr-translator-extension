@@ -392,7 +392,8 @@ async function runImageFlow(imageUrl: string): Promise<void> {
   void sendRequest({ type: "PRELOAD_OCR" }).catch(() => {});
 
   const imageRect = findImageRect(imageUrl);
-  if (imageUrl.startsWith("file:") && imageRect) {
+  // The background cannot fetch these; blob: URLs resolve only in their page.
+  if (/^(file|blob):/.test(imageUrl) && imageRect) {
     await runCapture({
       rect: imageRect,
       viewport: {
