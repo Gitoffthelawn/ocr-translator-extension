@@ -13,6 +13,10 @@ export type OcrImageSource =
   | { imageUrl: string };
 
 export type RuntimeMessage =
+  // Popup -> content: checks that the content script runs in the tab.
+  | {
+      type: "PING";
+    }
   | {
       type: "START_SELECTION";
     }

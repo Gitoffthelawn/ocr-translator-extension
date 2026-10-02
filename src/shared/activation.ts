@@ -33,6 +33,34 @@ export function isActivationPageSupported(url: string | undefined): boolean {
   );
 }
 
+export type ActivationTab = { id?: number; url?: string };
+
+export type PingTab = (
+  tabId: number,
+  message: { type: "PING" },
+  options: { frameId: number },
+) => Promise<unknown>;
+
+/** Without the tabs permission, the URL is hidden on schemes outside the host
+ * permissions (blob:, filesystem:, chrome:). The content script may still run
+ * on some of them, so ask it directly. */
+export async function isTabActivatable(
+  tab: ActivationTab | undefined,
+  ping: PingTab,
+): Promise<boolean> {
+  if (typeof tab?.id !== "number") {
+    return false;
+  }
+  if (tab.url) {
+    return isActivationPageSupported(tab.url);
+  }
+  try {
+    return (await ping(tab.id, { type: "PING" }, { frameId: 0 })) === true;
+  } catch {
+    return false;
+  }
+}
+
 export function isContentScriptUnavailableError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
 

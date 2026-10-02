@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   isActivationPageSupported,
   isContentScriptUnavailableError,
+  isTabActivatable,
 } from "./activation";
 
 describe("activation page support", () => {
@@ -39,6 +40,47 @@ describe("activation page support", () => {
 
   it("lets malformed URLs fall through to messaging", () => {
     expect(isActivationPageSupported("not a url")).toBe(true);
+  });
+});
+
+describe("tab activation check", () => {
+  const unusedPing = vi.fn(() => Promise.reject(new Error("unexpected ping")));
+
+  it("rejects tabs without an id", async () => {
+    expect(await isTabActivatable(undefined, unusedPing)).toBe(false);
+    expect(await isTabActivatable({ url: "https://example.com/" }, unusedPing)).toBe(
+      false,
+    );
+  });
+
+  it("decides from the URL when it is visible", async () => {
+    expect(
+      await isTabActivatable({ id: 1, url: "https://example.com/" }, unusedPing),
+    ).toBe(true);
+    expect(
+      await isTabActivatable({ id: 1, url: "chrome://extensions" }, unusedPing),
+    ).toBe(false);
+    expect(unusedPing).not.toHaveBeenCalled();
+  });
+
+  it("pings the top frame when the URL is hidden", async () => {
+    const ping = vi.fn(() => Promise.resolve(true));
+
+    expect(await isTabActivatable({ id: 7 }, ping)).toBe(true);
+    expect(ping).toHaveBeenCalledWith(7, { type: "PING" }, { frameId: 0 });
+  });
+
+  it("rejects hidden URLs where no content script answers", async () => {
+    const missing = vi.fn(() =>
+      Promise.reject(
+        new Error("Could not establish connection. Receiving end does not exist."),
+      ),
+    );
+
+    expect(await isTabActivatable({ id: 7 }, missing)).toBe(false);
+    expect(
+      await isTabActivatable({ id: 7 }, () => Promise.resolve(undefined)),
+    ).toBe(false);
   });
 });
 

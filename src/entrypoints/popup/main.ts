@@ -9,6 +9,7 @@ import {
 import {
   isActivationPageSupported,
   isContentScriptUnavailableError,
+  isTabActivatable,
 } from "@/shared/activation";
 import { browser } from "wxt/browser";
 import {
@@ -113,8 +114,10 @@ async function initPopup(): Promise<void> {
     elements.pickImage.disabled = false;
 
     if (
-      !isActivationPageSupported(activeTab?.url) ||
-      typeof activeTab?.id !== "number"
+      typeof activeTab?.id !== "number" ||
+      !(await isTabActivatable(activeTab, (tabId, message, options) =>
+        browser.tabs.sendMessage(tabId, message, options),
+      ))
     ) {
       disableSelection(elements, t("popupRestrictedPage"));
     } else if (
@@ -278,9 +281,10 @@ async function startPageAction(
       active: true,
       currentWindow: true,
     });
+    // A hidden URL may still be a usable page, e.g. blob:. Let messaging decide.
     if (
       typeof tab?.id !== "number" ||
-      !isActivationPageSupported(tab.url)
+      (tab.url && !isActivationPageSupported(tab.url))
     ) {
       disableSelection(elements, t("popupRestrictedPage"));
       return;

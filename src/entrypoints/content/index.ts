@@ -228,7 +228,15 @@ export default defineContentScript({
       onNewSelection: startNewSelection,
     });
 
-    const handleRuntimeMessage = (message: unknown): undefined => {
+    const handleRuntimeMessage = (
+      message: unknown,
+      _sender: unknown,
+      sendResponse: (response: unknown) => void,
+    ): undefined => {
+      if (isRuntimeMessage(message, "PING")) {
+        sendResponse(true);
+        return undefined;
+      }
       if (isRuntimeMessage(message, "START_SELECTION")) {
         endActiveImagePickerSession();
         closePopup();
