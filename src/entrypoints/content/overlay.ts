@@ -109,6 +109,10 @@ let currentTargetLang: LangCode | undefined;
 let config: OverlayConfig | undefined;
 
 let keydownHandler: ((event: KeyboardEvent) => void) | undefined;
+let keyupHandler: ((event: KeyboardEvent) => void) | undefined;
+let pointerdownHandler: (() => void) | undefined;
+// Shift toggles the view on release, but only when pressed on its own
+let loneShiftDown = false;
 let resizeHandler: (() => void) | undefined;
 let scrollHandler: (() => void) | undefined;
 let controlDisposers: Array<() => void> = [];
@@ -291,6 +295,15 @@ export function closeOverlay(): void {
     document.removeEventListener("keydown", keydownHandler, true);
     keydownHandler = undefined;
   }
+  if (keyupHandler) {
+    document.removeEventListener("keyup", keyupHandler, true);
+    keyupHandler = undefined;
+  }
+  if (pointerdownHandler) {
+    document.removeEventListener("pointerdown", pointerdownHandler, true);
+    pointerdownHandler = undefined;
+  }
+  loneShiftDown = false;
   if (resizeHandler) {
     window.removeEventListener("resize", resizeHandler);
     resizeHandler = undefined;
@@ -440,6 +453,11 @@ function mountChip(chip: HTMLElement, showSourceLanguageToolbar = false): void {
 function ensureGlobalHandlers(): void {
   if (!keydownHandler) {
     keydownHandler = (event: KeyboardEvent): void => {
+      if (event.key !== "Shift") {
+        loneShiftDown = false;
+      } else if (!event.repeat) {
+        loneShiftDown = !event.ctrlKey && !event.altKey && !event.metaKey;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -457,6 +475,28 @@ function ensureGlobalHandlers(): void {
       }
     };
     document.addEventListener("keydown", keydownHandler, true);
+  }
+  if (!keyupHandler) {
+    keyupHandler = (event: KeyboardEvent): void => {
+      if (event.key !== "Shift" || !loneShiftDown) {
+        return;
+      }
+      loneShiftDown = false;
+      if (
+        modeButton &&
+        !modeButton.disabled &&
+        !isEditableTarget(event.composedPath()[0])
+      ) {
+        toggleMode();
+      }
+    };
+    document.addEventListener("keyup", keyupHandler, true);
+  }
+  if (!pointerdownHandler) {
+    pointerdownHandler = (): void => {
+      loneShiftDown = false;
+    };
+    document.addEventListener("pointerdown", pointerdownHandler, true);
   }
   if (!resizeHandler) {
     resizeHandler = (): void => {
@@ -646,20 +686,32 @@ function createModeButton(): HTMLButtonElement {
   modeButton = button;
   updateModeButton();
 
+  button.addEventListener("click", toggleMode);
+
+  return button;
+}
+
+function toggleMode(): void {
   // Both views are built from the same toolbar, so only the boxes and the
   // button's own state changes; rebuilding the bar would replay its entry
   // animation on every flip.
-  button.addEventListener("click", () => {
-    if (isSpeaking(OVERLAY_SPEECH_OWNER)) {
-      stopSpeaking();
-    }
-    mode = mode === "translation" ? "original" : "translation";
-    selectedMode = mode;
-    showBoxLayer();
-    updateModeButton();
-  });
+  if (isSpeaking(OVERLAY_SPEECH_OWNER)) {
+    stopSpeaking();
+  }
+  mode = mode === "translation" ? "original" : "translation";
+  selectedMode = mode;
+  showBoxLayer();
+  updateModeButton();
+}
 
-  return button;
+function isEditableTarget(target: EventTarget | undefined): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement)
+  );
 }
 
 function updateModeButton(): void {
@@ -673,7 +725,8 @@ function updateModeButton(): void {
   modeButton.setAttribute("aria-pressed", String(showingTranslation));
   modeButton.setAttribute("aria-label", label);
   if (hasTranslationText) {
-    modeButton.title = label;
+    modeButton.setAttribute("aria-keyshortcuts", "Shift");
+    modeButton.title = `${label} (Shift)`;
   }
 }
 

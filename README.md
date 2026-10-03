@@ -34,6 +34,8 @@ To translate an image directly, right-click it and select "Translate this image"
 
 By default, translations appear over the original text. You can switch to showing a panel from the toolbar's context menu.
 
+In the overlay, press `Shift` to switch between the translation and the original.
+
 The default shortcut is `Ctrl+Shift+F`. To change it in Firefox, open `about:addons`, click the gear button, and select **Manage Extension Shortcuts**. In Chrome, open `chrome://extensions/shortcuts`.
 
 > [!NOTE]
