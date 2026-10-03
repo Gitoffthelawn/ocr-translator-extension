@@ -321,7 +321,7 @@
     "message": "キーボードショートカットの設定を開けませんでした。"
   },
   "selectionDragArea": {
-    "message": "ドラッグして範囲を選択"
+    "message": "ドラッグして範囲を選択、または画像をクリック"
   },
   "selectionPressKeyToCancel": {
     "message": "$1キーでキャンセル"

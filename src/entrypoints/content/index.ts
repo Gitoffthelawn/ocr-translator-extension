@@ -361,14 +361,18 @@ async function runSelectionFlow(): Promise<void> {
   if (generation !== selectionGeneration) {
     return;
   }
-  const viewportRect = await startSelectionOverlay(uiRoot, adjustSelection);
+  const selection = await startSelectionOverlay(uiRoot, adjustSelection);
 
-  if (!viewportRect || generation !== selectionGeneration) {
+  if (!selection || generation !== selectionGeneration) {
+    return;
+  }
+  if (selection.kind === "image") {
+    await runImageElementFlow(selection.image);
     return;
   }
 
   await runCapture({
-    rect: viewportRect,
+    rect: selection.rect,
     viewport: {
       width: window.innerWidth,
       height: window.innerHeight,
@@ -407,6 +411,11 @@ async function runImageFlow(imageUrl: string): Promise<void> {
   await runCapture({ imageUrl }, imageRect);
 }
 
+async function runImageElementFlow(image: HTMLImageElement): Promise<void> {
+  lastContextImage = image;
+  await runImageFlow(image.currentSrc || image.src);
+}
+
 async function runImagePickerFlow(sessionId: string): Promise<void> {
   if (!uiRoot) {
     return;
@@ -433,8 +442,7 @@ async function runImagePickerFlow(sessionId: string): Promise<void> {
     return;
   }
 
-  lastContextImage = image;
-  await runImageFlow(image.currentSrc || image.src);
+  await runImageElementFlow(image);
 }
 
 function endActiveImagePickerSession(): void {

@@ -363,7 +363,7 @@
     "message": "Could not open keyboard shortcut settings."
   },
   "selectionDragArea": {
-    "message": "Drag to select an area"
+    "message": "Drag to select an area or click an image"
   },
   "selectionPressKeyToCancel": {
     "message": "Press $1 to cancel",

@@ -321,7 +321,7 @@
     "message": "无法打开键盘快捷键设置。"
   },
   "selectionDragArea": {
-    "message": "拖动以选择区域"
+    "message": "拖动以选择区域，或点击图片"
   },
   "selectionPressKeyToCancel": {
     "message": "按 $1 键取消"

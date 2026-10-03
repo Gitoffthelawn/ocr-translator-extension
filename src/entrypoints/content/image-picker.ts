@@ -62,6 +62,8 @@ export function startImagePickerOverlay(
       overlay.append(hint);
     }
     container.append(overlay);
+    const root = container.getRootNode();
+    const uiHost = root instanceof ShadowRoot ? root.host : undefined;
 
     function cleanup(image: HTMLImageElement | null): void {
       document.removeEventListener("pointermove", onPointerMove, true);
@@ -75,16 +77,7 @@ export function startImagePickerOverlay(
     }
 
     function imageFromEvent(event: MouseEvent): HTMLImageElement | undefined {
-      const pathImage = event
-        .composedPath()
-        .find(
-          (target): target is HTMLImageElement =>
-            target instanceof HTMLImageElement,
-        );
-      if (pathImage && isSelectableImage(pathImage)) {
-        return pathImage;
-      }
-      return findImageAtPoint(document.images, event.clientX, event.clientY);
+      return findImageAtPoint(event.clientX, event.clientY, { ignore: uiHost });
     }
 
     function onPointerMove(event: PointerEvent): void {
@@ -153,33 +146,112 @@ export function startImagePickerOverlay(
   });
 }
 
+// Elements that paint content over whatever is under them.
+const REPLACED_ELEMENTS = new Set([
+  "canvas",
+  "embed",
+  "iframe",
+  "img",
+  "object",
+  "svg",
+  "video",
+]);
+
+// The topmost image a user can see at a viewport point. Hit testing already
+// skips clipped, hidden, and inert images; this also skips images behind a
+// backdrop or panel, such as the page under a lightbox. Images with
+// pointer-events: none are skipped too: bounds alone can't tell whether they
+// are visible.
 export function findImageAtPoint(
-  images: ArrayLike<HTMLImageElement>,
   x: number,
   y: number,
+  options: { minSize?: number; ignore?: Element } = {},
 ): HTMLImageElement | undefined {
-  for (let index = images.length - 1; index >= 0; index -= 1) {
-    const image = images[index];
-    if (!image || !isSelectableImage(image)) {
-      continue;
-    }
-    const rect = image.getBoundingClientRect();
+  const { minSize = 0, ignore } = options;
+  const stack = elementsAtPoint(document, x, y, ignore);
+
+  for (const [index, element] of stack.entries()) {
     if (
-      x >= rect.x &&
-      x < rect.x + rect.width &&
-      y >= rect.y &&
-      y < rect.y + rect.height
+      element instanceof HTMLImageElement &&
+      isSelectableImage(element, minSize) &&
+      !isCovered(element, stack.slice(0, index))
     ) {
-      return image;
+      return element;
     }
   }
   return undefined;
 }
 
-function isSelectableImage(image: HTMLImageElement): boolean {
+// Hit testing reports a shadow tree as its host. Open shadow trees are
+// expanded in place, each element listed just above its host.
+function elementsAtPoint(
+  root: Document | ShadowRoot,
+  x: number,
+  y: number,
+  ignore: Element | undefined,
+): Element[] {
+  return root.elementsFromPoint(x, y).flatMap((element) => {
+    // A shadow root also reports the elements around it; the caller has them.
+    if (element === ignore || element.getRootNode() !== root) {
+      return [];
+    }
+    const shadow = element.shadowRoot;
+    return shadow
+      ? [...elementsAtPoint(shadow, x, y, ignore), element]
+      : [element];
+  });
+}
+
+// Overlays that stay within the image (captions, badges, transparent click
+// catchers) leave it visible; a painted layer reaching past it hides it.
+function isCovered(image: HTMLImageElement, above: Element[]): boolean {
+  const bounds = image.getBoundingClientRect();
+  return above.some(
+    (element) =>
+      !element.contains(image) &&
+      !isWithin(element.getBoundingClientRect(), bounds) &&
+      paints(element),
+  );
+}
+
+function isWithin(inner: DOMRect, outer: DOMRect): boolean {
+  return (
+    inner.left >= outer.left - 1 &&
+    inner.top >= outer.top - 1 &&
+    inner.right <= outer.right + 1 &&
+    inner.bottom <= outer.bottom + 1
+  );
+}
+
+function paints(element: Element): boolean {
+  const style = getComputedStyle(element);
+  if (style.opacity === "0") {
+    return false;
+  }
+  return (
+    REPLACED_ELEMENTS.has(element.localName) ||
+    style.backgroundImage !== "none" ||
+    !isTransparent(style.backgroundColor)
+  );
+}
+
+function isTransparent(color: string): boolean {
+  return (
+    color === "transparent" ||
+    /^rgba\(.*,\s*0\)$/.test(color) ||
+    /\/\s*0\)$/.test(color)
+  );
+}
+
+function isSelectableImage(image: HTMLImageElement, minSize = 0): boolean {
   if (!image.currentSrc && !image.src) {
     return false;
   }
   const rect = image.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    rect.width >= minSize &&
+    rect.height >= minSize
+  );
 }

@@ -1,5 +1,6 @@
 import type { Rect } from "@/shared/types";
 import { t } from "@/shared/i18n";
+import { findImageAtPoint } from "./image-picker";
 
 interface Point {
   x: number;
@@ -8,12 +9,19 @@ interface Point {
 
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 type DragState =
+  | { kind: "press"; start: Point; image: HTMLImageElement }
   | { kind: "draw"; start: Point }
   | { kind: "move"; start: Point; rect: Rect }
   | { kind: "resize"; start: Point; rect: Rect; handle: Handle }
   | null;
 
+export type SelectionResult =
+  | { kind: "area"; rect: Rect }
+  | { kind: "image"; image: HTMLImageElement };
+
 const MIN_SIZE = 30;
+// How far a press on an image may move and still count as a click.
+const CLICK_TOLERANCE = 4;
 const RESIZE_HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
 // A confirmed selection leaves its dim on screen (bare, click-through) so the
@@ -39,17 +47,20 @@ export function cancelSelectionOverlay(): void {
   cancelActiveSelection?.();
 }
 
-// Draw a rectangle, then refine it before confirming. Coordinates are viewport
-// CSS pixels; the caller pairs them with the current viewport size.
+// Draw a rectangle, then refine it before confirming, or click an image to
+// pick it whole. Coordinates are viewport CSS pixels; the caller pairs them
+// with the current viewport size.
 export function startSelectionOverlay(
   container: HTMLElement,
   adjustSelection = true,
-): Promise<Rect | null> {
+): Promise<SelectionResult | null> {
   return new Promise((resolve) => {
     releaseSelectionDim();
 
     let dragState: DragState = null;
     let currentRect: Rect | null = null;
+    let hoveredImage: HTMLImageElement | undefined;
+    let lastPointer: Point | undefined;
 
     const overlay = document.createElement("div");
     overlay.className = "ocr-translate-selection-overlay";
@@ -75,6 +86,11 @@ export function startSelectionOverlay(
     hintSub.append(beforeKey ?? "", key, afterKey ?? "");
     hint.append(hintSub);
     overlay.append(hint);
+
+    const imageFrame = document.createElement("div");
+    imageFrame.className = "ocr-translate-image-picker-frame";
+    imageFrame.hidden = true;
+    overlay.append(imageFrame);
 
     const selection = document.createElement("div");
     selection.className = "ocr-translate-selection-rect";
@@ -109,18 +125,25 @@ export function startSelectionOverlay(
     controls.append(runButton, cancelButton);
     overlay.append(controls);
     container.append(overlay);
+    // Hit testing reports the overlay as its shadow host.
+    const root = container.getRootNode();
+    const uiHost = root instanceof ShadowRoot ? root.host : overlay;
     // Take focus from a page iframe, which would otherwise swallow Escape.
     overlay.focus({ preventScroll: true });
 
-    function cleanup(result: Rect | null): void {
+    function cleanup(result: SelectionResult | null): void {
       document.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("scroll", updateImageHover, true);
+      window.removeEventListener("resize", updateImageHover);
       cancelActiveSelection = undefined;
       if (result) {
         // Keep the dim; hide the selection chrome so none of it (the border is
         // drawn inside the rect) lands in the screenshot.
         overlay.classList.add("is-capturing");
         selection.style.display = "none";
+        hint.style.display = "none";
         hideControls();
+        imageFrame.hidden = true;
         lingeringOverlay = overlay;
       } else {
         overlay.remove();
@@ -143,7 +166,14 @@ export function startSelectionOverlay(
       hint.classList.add("is-dismissed");
 
       if (!currentRect) {
-        startDrawing(pointFromEvent(event));
+        lastPointer = pointFromEvent(event);
+        // Touch and pen presses may arrive without a hover first.
+        updateImageHover();
+        if (hoveredImage) {
+          dragState = { kind: "press", start: lastPointer, image: hoveredImage };
+        } else {
+          startDrawing(lastPointer);
+        }
         return;
       }
 
@@ -176,12 +206,23 @@ export function startSelectionOverlay(
     }
 
     function onPointerMove(event: PointerEvent): void {
+      const point = pointFromEvent(event);
+      lastPointer = point;
       if (!dragState) {
+        updateImageHover();
         return;
       }
 
       event.preventDefault();
-      const point = pointFromEvent(event);
+      if (dragState.kind === "press") {
+        const { start } = dragState;
+        if (Math.hypot(point.x - start.x, point.y - start.y) > CLICK_TOLERANCE) {
+          startDrawing(start);
+          setCurrentRect(rectFromPoints(start, point), false);
+        }
+        return;
+      }
+
       const dx = point.x - dragState.start.x;
       const dy = point.y - dragState.start.y;
 
@@ -204,6 +245,18 @@ export function startSelectionOverlay(
 
       event.preventDefault();
       event.stopPropagation();
+      lastPointer = pointFromEvent(event);
+
+      if (dragState.kind === "press") {
+        const { image } = dragState;
+        dragState = null;
+        if (image.isConnected) {
+          cleanup({ kind: "image", image });
+        } else {
+          updateImageHover();
+        }
+        return;
+      }
 
       if (dragState.kind !== "draw") {
         dragState = null;
@@ -216,19 +269,26 @@ export function startSelectionOverlay(
 
       if (rect.width < MIN_SIZE || rect.height < MIN_SIZE) {
         clearSelection();
+        updateImageHover();
         return;
       }
 
       if (adjustSelection) {
         enterAdjustMode(rect);
       } else {
-        hint.style.display = "none";
-        cleanup(rect);
+        cleanup({ kind: "area", rect });
       }
+    }
+
+    function onPointerLeave(): void {
+      lastPointer = undefined;
+      updateImageHover();
     }
 
     function startDrawing(start: Point): void {
       dragState = { kind: "draw", start };
+      hoveredImage = undefined;
+      imageFrame.hidden = true;
       hideControls();
       selection.classList.remove("is-adjusting");
       selection.classList.add("is-drawing");
@@ -260,6 +320,33 @@ export function startSelectionOverlay(
       dim.classList.remove("is-cutout");
       dim.removeAttribute("style");
       hideControls();
+    }
+
+    // Outline the image under the pointer while nothing is being drawn.
+    function updateImageHover(): void {
+      if (dragState || currentRect) {
+        return;
+      }
+      hoveredImage = lastPointer
+        ? findImageAtPoint(lastPointer.x, lastPointer.y, {
+            minSize: MIN_SIZE,
+            ignore: uiHost,
+          })
+        : undefined;
+      if (!hoveredImage) {
+        imageFrame.hidden = true;
+        dim.classList.remove("is-cutout");
+        dim.removeAttribute("style");
+        return;
+      }
+
+      const rect = hoveredImage.getBoundingClientRect();
+      imageFrame.hidden = false;
+      imageFrame.style.left = `${rect.x}px`;
+      imageFrame.style.top = `${rect.y}px`;
+      imageFrame.style.width = `${rect.width}px`;
+      imageFrame.style.height = `${rect.height}px`;
+      updateDim(rect);
     }
 
     function updateDim(rect: Rect): void {
@@ -387,7 +474,7 @@ export function startSelectionOverlay(
 
     function confirmSelection(): void {
       if (currentRect) {
-        cleanup(currentRect);
+        cleanup({ kind: "area", rect: currentRect });
       }
     }
 
@@ -423,8 +510,12 @@ export function startSelectionOverlay(
     overlay.addEventListener("pointerdown", onPointerDown);
     overlay.addEventListener("pointermove", onPointerMove);
     overlay.addEventListener("pointerup", onPointerUp);
+    overlay.addEventListener("pointerleave", onPointerLeave);
     overlay.addEventListener("contextmenu", onContextMenu);
     document.addEventListener("keydown", onKeyDown, true);
+    // The page can scroll under the overlay, moving images past the pointer.
+    window.addEventListener("scroll", updateImageHover, true);
+    window.addEventListener("resize", updateImageHover);
   });
 }
 

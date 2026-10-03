@@ -6,13 +6,13 @@ import { transformWithOxc } from "vite";
 
 const contentDir = new URL("../../../src/entrypoints/content/", import.meta.url);
 const modalSource = await readFile(new URL("modal-ui.ts", contentDir), "utf8");
+const pickerSource = await readFile(new URL("image-picker.ts", contentDir), "utf8");
 const selectionSource = await readFile(new URL("selection-overlay.ts", contentDir), "utf8");
 const css = await readFile(new URL("style.css", contentDir), "utf8");
 const { code } = await transformWithOxc(
-  modalSource + "\n" + selectionSource.replace(
-    'import { t } from "@/shared/i18n";',
-    'const t = (key: string) => key;',
-  ),
+  ["const t = (key: string) => key;", modalSource, pickerSource, selectionSource]
+    .join("\n")
+    .replace(/^import .*;\n/gm, ""),
   "modal-ui.ts",
 );
 
@@ -116,7 +116,8 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
         await page.locator(".ocr-translate-selection-run").click();
         await page.waitForFunction(() => window.selection !== "pending");
         assert.deepEqual(await page.evaluate(() => window.selection), {
-          x: 100, y: 100, width: 300, height: 200,
+          kind: "area",
+          rect: { x: 100, y: 100, width: 300, height: 200 },
         });
       }
       await page.locator("#image").evaluate(dialog => dialog.removeAttribute("style"));
@@ -175,7 +176,8 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       await page.locator(".ocr-translate-selection-run").click();
       await page.waitForFunction(() => window.selection !== "pending");
       assert.deepEqual(await page.evaluate(() => window.selection), {
-        x: 100, y: 100, width: 300, height: 200,
+        kind: "area",
+        rect: { x: 100, y: 100, width: 300, height: 200 },
       });
       assert.equal(await page.locator(".ocr-translate-selection-overlay.is-capturing").count(), 1);
       await page.evaluate(() => document.querySelector("#other").removeAttribute("open"));
