@@ -135,6 +135,9 @@ export function startSelectionOverlay(
       document.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("scroll", updateImageHover, true);
       window.removeEventListener("resize", updateImageHover);
+      // A kept overlay turns click-through, which fires pointerleave in
+      // Chromium; the hover must not reset the dim after that.
+      overlay.removeEventListener("pointerleave", onPointerLeave);
       cancelActiveSelection = undefined;
       if (result) {
         // Keep the dim; hide the selection chrome so none of it (the border is
@@ -144,6 +147,17 @@ export function startSelectionOverlay(
         hint.style.display = "none";
         hideControls();
         imageFrame.hidden = true;
+        // The crop rounds to device pixels and the cutout edge snaps on its
+        // own, so leave a little more lit than gets captured. An image is
+        // measured again in case it moved since the last hover.
+        updateDim(
+          outsetRect(
+            result.kind === "area"
+              ? result.rect
+              : result.image.getBoundingClientRect(),
+            2 / window.devicePixelRatio,
+          ),
+        );
         lingeringOverlay = overlay;
       } else {
         overlay.remove();
@@ -529,6 +543,15 @@ function rectFromPoints(start: Point, end: Point): Rect {
     y: Math.min(start.y, end.y),
     width: Math.abs(end.x - start.x),
     height: Math.abs(end.y - start.y),
+  };
+}
+
+function outsetRect(rect: Rect, margin: number): Rect {
+  return {
+    x: rect.x - margin,
+    y: rect.y - margin,
+    width: rect.width + margin * 2,
+    height: rect.height + margin * 2,
   };
 }
 

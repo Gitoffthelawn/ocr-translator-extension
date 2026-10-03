@@ -15,6 +15,7 @@ const { code } = await transformWithOxc(
   "selection-overlay.ts",
 );
 const svg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/%3E";
+const whiteSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Crect width='10' height='10' fill='white'/%3E%3C/svg%3E";
 
 for (const [name, browserType] of Object.entries({ chromium, firefox })) {
   test(`${name}: region selection picks a hovered image on click`, async () => {
@@ -183,6 +184,97 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       await page.mouse.click(200, 480);
       await page.waitForFunction(() => window.picked !== "pending");
       assert.equal(await page.evaluate(() => window.picked), "shadowed");
+    } finally {
+      await browser.close();
+    }
+  });
+
+  test(`${name}: the selection dim stays out of the captured region`, async () => {
+    const browser = await browserType.launch({
+      headless: true,
+      executablePath: process.env[`${name.toUpperCase()}_TEST_EXECUTABLE`],
+    });
+    try {
+      // Fractional scaling puts box edges between device pixels.
+      const page = await browser.newPage({
+        viewport: { width: 800, height: 600 },
+        deviceScaleFactor: 1.5,
+      });
+      await page.setContent(`
+        <body style="margin:0; background:white">
+          <img id="photo" src="${whiteSvg}" style="position:absolute; left:400.4px; top:300.6px; width:201.4px; height:151.2px">
+        </body>
+      `);
+      await page.addScriptTag({
+        type: "module",
+        content: `${code}
+          const host = document.createElement("div");
+          document.body.append(host);
+          const shadow = host.attachShadow({ mode: "open" });
+          const style = document.createElement("style");
+          style.textContent = ${JSON.stringify(css)};
+          const container = document.createElement("div");
+          shadow.append(style, container);
+          window.release = releaseSelectionDim;
+          window.start = () => {
+            window.selection = "pending";
+            startSelectionOverlay(container, false).then((result) => {
+              window.selection = result?.kind === "image"
+                ? { kind: "image", rect: result.image.getBoundingClientRect().toJSON() }
+                : result;
+            });
+          };
+        `,
+      });
+      await page.waitForFunction(() => Boolean(window.start));
+      const settled = async () => {
+        await page.waitForFunction(() => window.selection !== "pending");
+        return page.evaluate(() => window.selection);
+      };
+      // Crop a screenshot the way captureVisibleArea does; the page is white,
+      // so any darker pixel is dim that leaked in.
+      const darkest = async (rect) => {
+        const data = (await page.screenshot()).toString("base64");
+        return page.evaluate(async ({ data, rect }) => {
+          const blob = await (await fetch(`data:image/png;base64,${data}`)).blob();
+          const bitmap = await createImageBitmap(blob);
+          const dprX = bitmap.width / innerWidth;
+          const dprY = bitmap.height / innerHeight;
+          const x = Math.max(0, Math.round(rect.x * dprX));
+          const y = Math.max(0, Math.round(rect.y * dprY));
+          const width = Math.max(1, Math.round(rect.width * dprX));
+          const height = Math.max(1, Math.round(rect.height * dprY));
+          const context = new OffscreenCanvas(width, height).getContext("2d");
+          context.drawImage(bitmap, x, y, width, height, 0, 0, width, height);
+          const pixels = context.getImageData(0, 0, width, height).data;
+          let min = 255;
+          for (let index = 0; index < pixels.length; index += 4) {
+            min = Math.min(min, pixels[index], pixels[index + 1], pixels[index + 2]);
+          }
+          return min;
+        }, { data, rect });
+      };
+
+      for (const [startX, startY, endX, endY] of [
+        [100, 100, 301, 201],
+        [101, 101, 302, 202],
+        [100.3, 100.7, 301.6, 201.2],
+      ]) {
+        await page.evaluate(() => window.start());
+        await page.mouse.move(startX, startY);
+        await page.mouse.down();
+        await page.mouse.move(endX, endY, { steps: 5 });
+        await page.mouse.up();
+        const { rect } = await settled();
+        assert.equal(await darkest(rect), 255, JSON.stringify(rect));
+        await page.evaluate(() => window.release());
+      }
+
+      await page.evaluate(() => window.start());
+      await page.mouse.move(500, 375);
+      await page.mouse.click(500, 375);
+      const { rect } = await settled();
+      assert.equal(await darkest(rect), 255, JSON.stringify(rect));
     } finally {
       await browser.close();
     }

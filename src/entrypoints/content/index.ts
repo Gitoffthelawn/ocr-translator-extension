@@ -280,9 +280,10 @@ export default defineContentScript({
       ) {
         activePipelineStage = message.status.stage;
         showActiveLoading(message.status);
+        // The loading view takes over; overlay mode draws its own dim.
+        releaseSelectionDim();
         // Image URL requests report loading before their pixels are stored.
         if (message.status.stage !== "loading") {
-          releaseSelectionDim();
           syncPanelRegionOutline();
           requestCaptureSnapshot();
         }
