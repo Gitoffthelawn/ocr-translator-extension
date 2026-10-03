@@ -28,22 +28,21 @@ Browser extension that uses local OCR to extract text from images, comics, scans
 
 ## Usage
 
-Activate the extension from the browser toolbar or context menu, or press `Ctrl+Shift+F`. Select an area of the page and click "Translate".
+Open the extension from the toolbar or context menu, or press `Ctrl+Shift+F`. Drag to select an area, or click an image to translate it.
 
-To translate an image directly, right-click it and select "Translate this image".
+To move or resize the area before recognition starts, enable **Adjust selection before recognition** in the extension settings.
 
-By default, translations appear over the original text. You can switch to showing a panel from the toolbar's context menu.
+You can also right-click an image and choose "Translate this image". If clicking doesn't pick an image, for example one inside an embedded frame, use **Pick image** from the extension popup.
 
-In the overlay, press `Shift` to switch between the translation and the original.
+In the overlay view, press `Shift` to switch between the translation and the original.
 
-The default shortcut is `Ctrl+Shift+F`. To change it in Firefox, open `about:addons`, click the gear button, and select **Manage Extension Shortcuts**. In Chrome, open `chrome://extensions/shortcuts`.
+By default, the translation appears in an overlay. You can switch to the panel view from the toolbar context menu, or change the default view in the extension settings.
 
-> [!NOTE]
-> To use the extension on local image files, you need to grant access to local files.
-> - Firefox: open the add-on's **Permissions and data** settings and enable **Access local files on your computer**.
-> - Chrome: open the extension details and enable **Allow access to file URLs**.
->
-> After granting the permission, reload the image and try again.
+### Local image files
+To use the extension on local image files, you need to grant access to local files.
+  - Firefox: open the add-on's **Permissions and data** settings and enable **Access local files on your computer**.
+  - Chrome: open the extension details and enable **Allow access to file URLs**.
+After granting the permission, reload the image and try again.
 
 ## Supported languages
 
