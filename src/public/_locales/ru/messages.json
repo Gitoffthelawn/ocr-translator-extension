@@ -197,6 +197,24 @@
   "optionsAdjustSelectionHint": {
     "message": "Позволяет переместить или изменить размер выделенного участка до начала распознавания текста."
   },
+  "optionsShortcut": {
+    "message": "Сочетание клавиш"
+  },
+  "optionsShortcutHint": {
+    "message": "Запускает выбор области на текущей странице."
+  },
+  "optionsShortcutNotSet": {
+    "message": "Не задано"
+  },
+  "optionsShortcutChange": {
+    "message": "Изменить"
+  },
+  "optionsShortcutSet": {
+    "message": "Настроить"
+  },
+  "optionsCouldNotOpenShortcutSettings": {
+    "message": "Не удалось открыть настройки сочетаний клавиш."
+  },
   "optionsSee": {
     "message": "См."
   },
@@ -287,21 +305,6 @@
   "popupPickImage": {
     "message": "Выбрать изображение"
   },
-  "popupShortcutPrefix": {
-    "message": "Нажмите"
-  },
-  "popupShortcutSuffix": {
-    "message": "для выбора области"
-  },
-  "popupEditShortcut": {
-    "message": "Изменить сочетание клавиш"
-  },
-  "popupShortcutNotSet": {
-    "message": "Сочетание клавиш не задано."
-  },
-  "popupSetShortcut": {
-    "message": "Настроить"
-  },
   "popupRestrictedPage": {
     "message": "Доступ к этой странице браузера ограничен, поэтому расширение не может с ней работать. Попробуйте на обычной веб-странице."
   },
@@ -316,9 +319,6 @@
   },
   "popupLocalFilePermission": {
     "message": "Расширению требуется разрешение на доступ к локальным файлам. В настройках дополнения выберите «Разрешения и данные» и включите «Доступ к локальным файлам на вашем компьютере», затем перезагрузите этот файл."
-  },
-  "popupCouldNotOpenShortcutSettings": {
-    "message": "Не удалось открыть настройки сочетаний клавиш."
   },
   "selectionDragArea": {
     "message": "Потяните мышью, чтобы выбрать область, или нажмите на изображение"

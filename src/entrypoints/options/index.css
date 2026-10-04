@@ -587,16 +587,48 @@ select:focus-visible {
   color: var(--muted);
 }
 
-.settings-toggle {
+.settings-toggle,
+.settings-shortcut {
   display: flex;
   gap: 16px;
   align-items: center;
   font-weight: 600;
 }
 
+.settings-shortcut {
+  flex-wrap: wrap;
+}
+
+.settings-shortcut[hidden] {
+  display: none;
+}
+
+.shortcut-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.shortcut-key {
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: var(--hover-bg);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.shortcut-key.is-unset {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .settings-section > .field + .field,
 .settings-section > .field + .settings-toggle,
 .settings-section > .settings-toggle + .settings-toggle,
+.settings-section > .settings-toggle + .settings-shortcut,
 .settings-section > .field-row + .llm-settings,
 .field-row > .field + .field {
   margin-top: 10px;

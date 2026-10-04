@@ -189,7 +189,7 @@ select:disabled,
 
 .popup-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin-top: 20px;
 }
@@ -207,10 +207,22 @@ select:disabled,
   cursor: pointer;
 }
 
+.popup-actions .primary-button {
+  flex-direction: column;
+  gap: 1px;
+  min-height: 52px;
+}
+
 .primary-button {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #ffffff;
+}
+
+.button-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .secondary-button {
@@ -245,44 +257,17 @@ select:disabled,
   cursor: default;
 }
 
-.shortcut-hint {
-  display: flex;
-  min-height: 39px;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin: 16px -16px -16px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-  padding: 9px 16px;
-  background: color-mix(in srgb, var(--bg) 96%, var(--muted));
-  color: color-mix(in srgb, var(--muted) 92%, var(--text));
-  font-size: 12px;
-}
-
 .shortcut-key {
-  flex: none;
-  border: 1px solid color-mix(in srgb, var(--border-strong) 75%, transparent);
-  border-radius: 4px;
-  padding: 2px 7px;
-  background: transparent;
-  color: color-mix(in srgb, var(--muted) 45%, var(--text));
-  cursor: pointer;
-}
-
-.shortcut-key:hover {
-  border-color: var(--muted);
-  background: var(--bg);
-}
-
-.shortcut-key kbd {
+  color: rgba(255, 255, 255, 0.85);
   font: inherit;
-  font-weight: 550;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
 .icon-button:focus-visible,
 select:focus-visible,
-.shortcut-key:focus-visible,
 .popup-actions button:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 1px;

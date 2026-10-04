@@ -223,6 +223,24 @@
   "optionsAdjustSelectionHint": {
     "message": "Move or resize the selected area before text recognition starts."
   },
+  "optionsShortcut": {
+    "message": "Keyboard shortcut"
+  },
+  "optionsShortcutHint": {
+    "message": "Starts area selection on the current page."
+  },
+  "optionsShortcutNotSet": {
+    "message": "Not set"
+  },
+  "optionsShortcutChange": {
+    "message": "Change"
+  },
+  "optionsShortcutSet": {
+    "message": "Set shortcut"
+  },
+  "optionsCouldNotOpenShortcutSettings": {
+    "message": "Could not open keyboard shortcut settings."
+  },
   "optionsSee": {
     "message": "See",
     "description": "Text before the optionsEnableWebGpuLink link: 'See how to enable WebGPU in your browser'."
@@ -327,23 +345,6 @@
     "message": "Pick image",
     "description": "Choose an image on the current web page to recognize and translate."
   },
-  "popupShortcutPrefix": {
-    "message": "Press",
-    "description": "Text before the keyboard shortcut: 'Press [shortcut] to select an area'."
-  },
-  "popupShortcutSuffix": {
-    "message": "to select an area",
-    "description": "Text after the keyboard shortcut: 'Press [shortcut] to select an area'."
-  },
-  "popupEditShortcut": {
-    "message": "Edit keyboard shortcut"
-  },
-  "popupShortcutNotSet": {
-    "message": "Keyboard shortcut not set."
-  },
-  "popupSetShortcut": {
-    "message": "Set shortcut"
-  },
   "popupRestrictedPage": {
     "message": "This browser page is restricted, so the extension can't access it. Try it on a regular web page."
   },
@@ -358,9 +359,6 @@
   },
   "popupLocalFilePermission": {
     "message": "This extension needs permission to access local files. In add-on settings, select “Permissions and data” and enable “Access local files on your computer”, then reload this file."
-  },
-  "popupCouldNotOpenShortcutSettings": {
-    "message": "Could not open keyboard shortcut settings."
   },
   "selectionDragArea": {
     "message": "Drag to select an area or click an image"

@@ -32,6 +32,10 @@ import {
   uiLanguage,
 } from "@/shared/i18n";
 import type { Settings } from "@/shared/types";
+import {
+  getStartSelectionShortcut,
+  openShortcutSettings,
+} from "@/shared/shortcut";
 import { getWebGpuAdapterStatus } from "@/shared/webgpu";
 import { browser } from "wxt/browser";
 import "./index.css";
@@ -179,6 +183,37 @@ async function initOptions(): Promise<void> {
       () => showStatus(t("commonSaved")),
       (error: unknown) => showSaveError(error),
     );
+  });
+
+  const syncShortcut = async (): Promise<void> => {
+    try {
+      const shortcut = await getStartSelectionShortcut();
+      elements.shortcutKey.textContent = shortcut ?? t("optionsShortcutNotSet");
+      elements.shortcutKey.classList.toggle("is-unset", !shortcut);
+      elements.shortcutEditButton.textContent = shortcut
+        ? t("optionsShortcutChange")
+        : t("optionsShortcutSet");
+      elements.shortcutRow.hidden = false;
+    } catch {
+      elements.shortcutRow.hidden = true;
+    }
+  };
+  void syncShortcut();
+  // The shortcut is edited on a browser page, so refresh it on return.
+  window.addEventListener("focus", () => void syncShortcut());
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      void syncShortcut();
+    }
+  });
+  elements.shortcutEditButton.addEventListener("click", () => {
+    openShortcutSettings().catch((error: unknown) => {
+      console.error(
+        "[Screen OCR Translator] Failed to open shortcut settings",
+        error,
+      );
+      showStatus(t("optionsCouldNotOpenShortcutSettings"), { isError: true });
+    });
   });
 
   const syncProviderSections = (): void => {
@@ -619,6 +654,9 @@ function getOptionsElements(): {
   ocrWebGpuInput: HTMLInputElement;
   ocrWebGpuNote: HTMLElement;
   ocrWebGpuStatus: HTMLElement;
+  shortcutRow: HTMLElement;
+  shortcutKey: HTMLElement;
+  shortcutEditButton: HTMLButtonElement;
   deeplSettings: HTMLFieldSetElement;
   deeplApiKeyInput: HTMLInputElement;
   deeplPlanSelect: HTMLSelectElement;
@@ -667,6 +705,11 @@ function getOptionsElements(): {
   );
   const ocrWebGpuNote = app.querySelector<HTMLElement>(".ocr-webgpu-note");
   const ocrWebGpuStatus = app.querySelector<HTMLElement>(".ocr-webgpu-status");
+  const shortcutRow = app.querySelector<HTMLElement>(".settings-shortcut");
+  const shortcutKey = app.querySelector<HTMLElement>(".shortcut-key");
+  const shortcutEditButton = app.querySelector<HTMLButtonElement>(
+    ".shortcut-edit",
+  );
   const deeplSettings = app.querySelector<HTMLFieldSetElement>(".deepl-settings");
   const deeplApiKeyInput = app.querySelector<HTMLInputElement>(
     "input[name='deeplApiKey']",
@@ -720,6 +763,9 @@ function getOptionsElements(): {
     !ocrWebGpuInput ||
     !ocrWebGpuNote ||
     !ocrWebGpuStatus ||
+    !shortcutRow ||
+    !shortcutKey ||
+    !shortcutEditButton ||
     !deeplSettings ||
     !deeplApiKeyInput ||
     !deeplPlanSelect ||
@@ -754,6 +800,9 @@ function getOptionsElements(): {
     ocrWebGpuInput,
     ocrWebGpuNote,
     ocrWebGpuStatus,
+    shortcutRow,
+    shortcutKey,
+    shortcutEditButton,
     deeplSettings,
     deeplApiKeyInput,
     deeplPlanSelect,

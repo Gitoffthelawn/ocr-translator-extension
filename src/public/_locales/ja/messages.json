@@ -197,6 +197,24 @@
   "optionsAdjustSelectionHint": {
     "message": "文字認識が始まる前に、選択範囲を移動したりサイズを変更したりできます。"
   },
+  "optionsShortcut": {
+    "message": "キーボードショートカット"
+  },
+  "optionsShortcutHint": {
+    "message": "現在のページで範囲選択を開始します。"
+  },
+  "optionsShortcutNotSet": {
+    "message": "未設定"
+  },
+  "optionsShortcutChange": {
+    "message": "変更"
+  },
+  "optionsShortcutSet": {
+    "message": "ショートカットを設定"
+  },
+  "optionsCouldNotOpenShortcutSettings": {
+    "message": "キーボードショートカットの設定を開けませんでした。"
+  },
   "optionsSee": {
     "message": "参考："
   },
@@ -287,21 +305,6 @@
   "popupPickImage": {
     "message": "画像を選択"
   },
-  "popupShortcutPrefix": {
-    "message": "ショートカット："
-  },
-  "popupShortcutSuffix": {
-    "message": "で範囲を選択"
-  },
-  "popupEditShortcut": {
-    "message": "キーボードショートカットを変更"
-  },
-  "popupShortcutNotSet": {
-    "message": "キーボードショートカットが未設定です。"
-  },
-  "popupSetShortcut": {
-    "message": "ショートカットを設定"
-  },
   "popupRestrictedPage": {
     "message": "このページでは拡張機能を使用できません。通常のウェブページでお試しください。"
   },
@@ -316,9 +319,6 @@
   },
   "popupLocalFilePermission": {
     "message": "この拡張機能にはローカルファイルへのアクセス許可が必要です。アドオンの設定で「権限とデータ」を選択し、コンピューター上のローカルファイルへのアクセスを許可してから、このファイルを再読み込みしてください。"
-  },
-  "popupCouldNotOpenShortcutSettings": {
-    "message": "キーボードショートカットの設定を開けませんでした。"
   },
   "selectionDragArea": {
     "message": "ドラッグして範囲を選択、または画像をクリック"

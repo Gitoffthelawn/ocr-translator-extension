@@ -197,6 +197,24 @@
   "optionsAdjustSelectionHint": {
     "message": "Дозволяє перемістити або змінити розмір виділеної ділянки до початку розпізнавання тексту."
   },
+  "optionsShortcut": {
+    "message": "Комбінація клавіш"
+  },
+  "optionsShortcutHint": {
+    "message": "Запускає вибір ділянки на поточній сторінці."
+  },
+  "optionsShortcutNotSet": {
+    "message": "Не задано"
+  },
+  "optionsShortcutChange": {
+    "message": "Змінити"
+  },
+  "optionsShortcutSet": {
+    "message": "Налаштувати"
+  },
+  "optionsCouldNotOpenShortcutSettings": {
+    "message": "Не вдалося відкрити налаштування комбінацій клавіш."
+  },
   "optionsSee": {
     "message": "Див."
   },
@@ -287,21 +305,6 @@
   "popupPickImage": {
     "message": "Вибрати зображення"
   },
-  "popupShortcutPrefix": {
-    "message": "Натисніть"
-  },
-  "popupShortcutSuffix": {
-    "message": "для вибору ділянки"
-  },
-  "popupEditShortcut": {
-    "message": "Змінити комбінацію клавіш"
-  },
-  "popupShortcutNotSet": {
-    "message": "Швидку клавішу не задано."
-  },
-  "popupSetShortcut": {
-    "message": "Налаштувати"
-  },
   "popupRestrictedPage": {
     "message": "Ця сторінка браузера має обмежений доступ, тому розширення не може працювати з нею. Спробуйте на звичайній вебсторінці."
   },
@@ -316,9 +319,6 @@
   },
   "popupLocalFilePermission": {
     "message": "Розширенню потрібен дозвіл на доступ до локальних файлів. У налаштуваннях додатка виберіть «Дозволи й дані» та увімкніть «Доступ до локальних файлів на вашому комп’ютері», а потім перезавантажте цей файл."
-  },
-  "popupCouldNotOpenShortcutSettings": {
-    "message": "Не вдалося відкрити налаштування комбінацій клавіш."
   },
   "selectionDragArea": {
     "message": "Потягніть для вибору ділянки або натисніть на зображення"

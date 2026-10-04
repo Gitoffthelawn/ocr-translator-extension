@@ -197,6 +197,24 @@
   "optionsAdjustSelectionHint": {
     "message": "可在文字识别开始前移动选区或调整其大小。"
   },
+  "optionsShortcut": {
+    "message": "键盘快捷键"
+  },
+  "optionsShortcutHint": {
+    "message": "在当前页面开始选择区域。"
+  },
+  "optionsShortcutNotSet": {
+    "message": "未设置"
+  },
+  "optionsShortcutChange": {
+    "message": "更改"
+  },
+  "optionsShortcutSet": {
+    "message": "设置快捷键"
+  },
+  "optionsCouldNotOpenShortcutSettings": {
+    "message": "无法打开键盘快捷键设置。"
+  },
   "optionsSee": {
     "message": "查看"
   },
@@ -287,21 +305,6 @@
   "popupPickImage": {
     "message": "选择图片"
   },
-  "popupShortcutPrefix": {
-    "message": "按"
-  },
-  "popupShortcutSuffix": {
-    "message": "选择区域"
-  },
-  "popupEditShortcut": {
-    "message": "编辑键盘快捷键"
-  },
-  "popupShortcutNotSet": {
-    "message": "未设置键盘快捷键。"
-  },
-  "popupSetShortcut": {
-    "message": "设置快捷键"
-  },
   "popupRestrictedPage": {
     "message": "无法在此页面使用此扩展。请在普通网页上重试。"
   },
@@ -316,9 +319,6 @@
   },
   "popupLocalFilePermission": {
     "message": "此扩展需要访问本地文件的权限。请在附加组件设置中选择“权限和数据”，启用“访问您计算机上的本地文件”，然后重新加载此文件。"
-  },
-  "popupCouldNotOpenShortcutSettings": {
-    "message": "无法打开键盘快捷键设置。"
   },
   "selectionDragArea": {
     "message": "拖动以选择区域，或点击图片"
