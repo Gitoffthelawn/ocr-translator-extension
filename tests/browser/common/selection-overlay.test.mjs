@@ -17,6 +17,13 @@ const { code } = await transformWithOxc(
 const svg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/%3E";
 const whiteSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Crect width='10' height='10' fill='white'/%3E%3C/svg%3E";
 
+// Firefox hit-tests against the last painted frame, so a pointer move right
+// after an overlay appears can still reach the page.
+const nextPaint = (page) =>
+  page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+
 for (const [name, browserType] of Object.entries({ chromium, firefox })) {
   test(`${name}: region selection picks a hovered image on click`, async () => {
     const browser = await browserType.launch({
@@ -78,12 +85,20 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       });
       await page.waitForFunction(() => Boolean(window.start));
       const frame = page.locator(".ocr-translate-image-picker-frame");
+      const start = async (adjust) => {
+        await page.evaluate((adjust) => window.start(adjust), adjust);
+        await nextPaint(page);
+      };
+      const pick = async () => {
+        await page.evaluate(() => window.pick());
+        await nextPaint(page);
+      };
       const settled = async () => {
         await page.waitForFunction(() => window.selection !== "pending");
         return page.evaluate(() => window.selection);
       };
 
-      await page.evaluate(() => window.start(true));
+      await start(true);
       await page.mouse.move(250, 250);
       assert.deepEqual(await frame.boundingBox(), { x: 100, y: 150, width: 300, height: 200 });
 
@@ -141,7 +156,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       await page.evaluate(() => window.release());
 
       // Images inside open shadow roots, as Pick image finds them.
-      await page.evaluate(() => window.start(true));
+      await start(true);
       await page.mouse.move(200, 480);
       assert.deepEqual(await frame.boundingBox(), { x: 100, y: 420, width: 200, height: 120 });
       await page.mouse.click(200, 480);
@@ -149,7 +164,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       await page.evaluate(() => window.release());
 
       // A drag that starts on an image still selects an area.
-      await page.evaluate(() => window.start(false));
+      await start(false);
       await page.mouse.move(150, 200);
       await page.mouse.down();
       await page.mouse.move(350, 320, { steps: 5 });
@@ -162,7 +177,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       await page.evaluate(() => window.release());
 
       // An area being adjusted takes priority over image hover.
-      await page.evaluate(() => window.start(true));
+      await start(true);
       await page.mouse.move(450, 400);
       await page.mouse.down();
       await page.mouse.move(600, 500, { steps: 5 });
@@ -174,7 +189,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       assert.equal(await page.locator(".ocr-translate-selection-overlay").count(), 0);
 
       // Pick image uses the same lookup.
-      await page.evaluate(() => window.pick());
+      await pick();
       await page.mouse.move(250, 250);
       assert.deepEqual(await frame.boundingBox(), { x: 100, y: 150, width: 300, height: 200 });
       await page.mouse.move(650, 450);
@@ -227,6 +242,10 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
         `,
       });
       await page.waitForFunction(() => Boolean(window.start));
+      const start = async () => {
+        await page.evaluate(() => window.start());
+        await nextPaint(page);
+      };
       const settled = async () => {
         await page.waitForFunction(() => window.selection !== "pending");
         return page.evaluate(() => window.selection);
@@ -260,7 +279,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
         [101, 101, 302, 202],
         [100.3, 100.7, 301.6, 201.2],
       ]) {
-        await page.evaluate(() => window.start());
+        await start();
         await page.mouse.move(startX, startY);
         await page.mouse.down();
         await page.mouse.move(endX, endY, { steps: 5 });
@@ -270,7 +289,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
         await page.evaluate(() => window.release());
       }
 
-      await page.evaluate(() => window.start());
+      await start();
       await page.mouse.move(500, 375);
       await page.mouse.click(500, 375);
       const { rect } = await settled();
