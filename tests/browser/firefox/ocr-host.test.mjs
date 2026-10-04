@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { resolve } from "node:path";
 import test from "node:test";
-import { Builder } from "selenium-webdriver";
+import { Builder, By } from "selenium-webdriver";
 import * as firefox from "selenium-webdriver/firefox.js";
 
-test("initializes the Firefox OCR host and runs local recognition", {
+test("initializes the Firefox OCR host and recognizes data URLs and iframe blobs", {
   timeout: 120_000,
 }, async () => {
   const extensionPath = resolve(".output/firefox-mv3");
@@ -150,7 +151,83 @@ test("initializes the Firefox OCR host and runs local recognition", {
       "cyrillic",
     );
     assert.ok(autoOcr?.blocks?.length >= 2);
+    await checkBlobImagePicker(driver);
   } finally {
     await driver.quit();
   }
 });
+
+async function checkBlobImagePicker(driver) {
+  const server = createServer((request, response) => {
+    response.writeHead(200, { "Content-Type": "text/html" });
+    response.end(request.url === "/frame"
+      ? '<!doctype html><img id="sample" style="position:absolute;left:12vw;top:12vh;width:40vw;height:36vh">'
+      : '<!doctype html><body style="background:blue"><iframe src="/frame" style="position:fixed;left:60vw;top:45vh;width:36vw;height:50vh;border:0"></iframe>');
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const url = `http://127.0.0.1:${server.address().port}/`;
+    await driver.manage().window().setRect({ width: 1280, height: 1000 });
+    await driver.executeAsyncScript(function () {
+      const done = arguments[arguments.length - 1];
+      browser.storage.local.set({
+        uiLocale: "en",
+        displayMode: "panel",
+        settings: {
+          ocr: { providerId: "paddle", sourceLang: "en" },
+          translation: { providerId: "google", targetLang: "en" },
+        },
+      }).then(done);
+    });
+    const control = await driver.getWindowHandle();
+    await driver.switchTo().newWindow("tab");
+    const page = await driver.getWindowHandle();
+    await driver.get(url);
+    await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
+    await driver.executeAsyncScript(function () {
+      const done = arguments[arguments.length - 1];
+      const canvas = document.createElement("canvas");
+      canvas.width = 600;
+      canvas.height = 400;
+      const drawing = canvas.getContext("2d");
+      drawing.fillStyle = "white";
+      drawing.fillRect(0, 0, 600, 400);
+      drawing.fillStyle = "black";
+      drawing.font = "bold 80px sans-serif";
+      drawing.fillText("SAMPLE", 60, 150);
+      drawing.fillText("TEXT", 60, 310);
+      canvas.toBlob((blob) => {
+        const image = document.querySelector("#sample");
+        image.onload = () => done();
+        image.src = URL.createObjectURL(blob);
+      });
+    });
+
+    await driver.switchTo().window(control);
+    const started = await driver.executeAsyncScript(function (url) {
+      const done = arguments[arguments.length - 1];
+      browser.tabs.query({}).then((tabs) => {
+        const tab = tabs.find((tab) => tab.url === url);
+        return browser.tabs.sendMessage(tab.id, {
+          type: "START_IMAGE_PICKER",
+          sessionId: "iframe-blob-test",
+        });
+      }).then(() => done(true), (error) => done(String(error)));
+    }, url);
+    assert.equal(started, true);
+    await driver.switchTo().window(page);
+    await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
+    await driver.wait(async () => driver.executeScript(() =>
+      Boolean(document.querySelector("ocr-translate-ui")?.shadowRoot.querySelector(".ocr-translate-image-picker-overlay")),
+    ), 10_000);
+    await driver.findElement(By.css("#sample")).click();
+    await driver.wait(async () => {
+      const text = await driver.executeScript(() =>
+        document.querySelector("ocr-translate-ui")?.shadowRoot.querySelector("textarea")?.value,
+      );
+      return /SAMPLE\s+TEXT/.test(text ?? "");
+    }, 30_000, "The iframe blob should be recognized as SAMPLE TEXT");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}

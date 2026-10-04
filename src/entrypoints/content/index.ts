@@ -397,8 +397,7 @@ async function runImageFlow(imageUrl: string): Promise<void> {
   void sendRequest({ type: "PRELOAD_OCR" }).catch(() => {});
 
   const imageRect = findImageRect(imageUrl);
-  // The background cannot fetch these; blob: URLs resolve only in their page.
-  if (/^(file|blob):/.test(imageUrl) && imageRect) {
+  if (imageUrl.startsWith("file:") && imageRect) {
     await runCapture({
       rect: imageRect,
       viewport: {
@@ -545,12 +544,30 @@ async function runCapture(
   // For region captures, keep the loading panel hidden until the background has
   // taken its screenshot so the panel cannot appear in the captured image.
   await requestRunner.run({
-    request: (requestId) =>
-      sendRequest<PipelineResult>({
+    request: async (requestId) => {
+      let requestSource = source;
+      if ("imageUrl" in source && source.imageUrl.startsWith("blob:")) {
+        // The background cannot fetch a blob URL owned by this frame.
+        const response = await fetch(source.imageUrl);
+        const blob = await response.blob();
+        const imageUrl = await new Promise<string>((resolve, reject) => {
+          // FileReader also handles Firefox's page-owned Blob wrappers.
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+        if (requestRunner.activeRequestId !== requestId) {
+          throw new DOMException("Request cancelled", "AbortError");
+        }
+        requestSource = { imageUrl };
+      }
+      return sendRequest<PipelineResult>({
         type: "OCR_TRANSLATE_REQUEST",
         requestId,
-        ...source,
-      }),
+        ...requestSource,
+      });
+    },
     onSuccess: (result) => {
       pendingText = result.ocr.text;
       presentResult(result, true);
