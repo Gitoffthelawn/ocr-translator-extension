@@ -75,9 +75,8 @@ multi-column layouts. Selecting a smaller area can improve results.
 ## WebGPU setup
 
 > [!WARNING]
-> GPU acceleration is experimental. Depending on your browser, OS and hardware, it may make text recognition faster or slower. You can enable it in settings.
-
-On Linux, WebGPU is generally disabled by default. Follow the steps below to enable it.
+> GPU acceleration is experimental. Depending on your browser, OS and hardware, it may make text recognition faster or slower.
+> The flags below enable WebGPU for all websites and can cause crashes or instability, so use them at your own risk.
 
 ### Firefox
 
