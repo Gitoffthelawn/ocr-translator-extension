@@ -8,10 +8,13 @@
     "description": "Extension description"
   },
   "commandTranslateScreenRegion": {
-    "message": "Translate a screen region"
+    "message": "Translate an area"
+  },
+  "commandTranslateScreenRegionLive": {
+    "message": "Live translation"
   },
   "contextTranslateScreenRegion": {
-    "message": "Translate a screen region…"
+    "message": "Translate an area…"
   },
   "contextTranslateImage": {
     "message": "Translate this image"
@@ -339,11 +342,19 @@
     "description": "Display results in a panel in the bottom-right corner."
   },
   "popupSelectArea": {
-    "message": "Select area"
+    "message": "Translate an area"
   },
   "popupPickImage": {
-    "message": "Pick image",
+    "message": "Translate an image",
     "description": "Choose an image on the current web page to recognize and translate."
+  },
+  "popupLiveTranslation": {
+    "message": "Live translation",
+    "description": "Button that translates a chosen screen area continuously, for example video subtitles."
+  },
+  "popupLiveTranslationHint": {
+    "message": "Translate a screen area in real time, e.g. hardcoded video subtitles.",
+    "description": "Tooltip of the Live translation button in the popup."
   },
   "popupRestrictedPage": {
     "message": "This browser page is restricted, so the extension can't access it. Try it on a regular web page."
@@ -363,6 +374,10 @@
   "selectionDragArea": {
     "message": "Drag to select an area or click an image"
   },
+  "liveSelectionHint": {
+    "message": "Drag over an area to translate it live",
+    "description": "Hint shown while choosing the screen area to translate live."
+  },
   "selectionPressKeyToCancel": {
     "message": "Press $1 to cancel",
     "description": "$1 is the keyboard key used to cancel selection."
@@ -376,6 +391,10 @@
   "selectionRunOcr": {
     "message": "Translate",
     "description": "Button that starts text recognition and translation for the selected area."
+  },
+  "liveSelectionStart": {
+    "message": "Start",
+    "description": "Button that starts live translation of the selected area."
   },
   "languageTargetTitle": {
     "message": "Target language: $1",
@@ -392,7 +411,7 @@
     "message": "Search languages"
   },
   "panelSelectNewRegion": {
-    "message": "Select new region"
+    "message": "Select new area"
   },
   "panelResize": {
     "message": "Resize panel"
@@ -430,6 +449,30 @@
   },
   "panelAlreadyInTargetLanguage": {
     "message": "The text is already in the target language."
+  },
+  "liveWaitingForText": {
+    "message": "Waiting for text…",
+    "description": "Shown in the live translation panel while the selected area contains no text."
+  },
+  "livePause": {
+    "message": "Pause",
+    "description": "Button that pauses live translation."
+  },
+  "liveResume": {
+    "message": "Resume",
+    "description": "Button that resumes live translation."
+  },
+  "liveShowOriginal": {
+    "message": "Show original text",
+    "description": "Button that shows the recognized text below the translation."
+  },
+  "liveHideOriginal": {
+    "message": "Hide original text",
+    "description": "Button that hides the recognized text below the translation."
+  },
+  "liveTextSize": {
+    "message": "Text size",
+    "description": "Button in the live translation panel that opens the text size controls."
   },
   "overlayMoveToolbar": {
     "message": "Move toolbar"
@@ -552,7 +595,7 @@
     "message": "Could not encode the captured image."
   },
   "errorCapturedImageUnavailable": {
-    "message": "The captured image is no longer available. Please select the region again."
+    "message": "The captured image is no longer available. Please select the area again."
   },
   "errorOcrWorkerCrashed": {
     "message": "The OCR worker crashed.",

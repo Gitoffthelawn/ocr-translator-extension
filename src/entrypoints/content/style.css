@@ -1782,12 +1782,411 @@
   box-shadow: var(--ocr-focus-halo);
 }
 
+/* Live translation */
+
+/* Both pieces sit outside the monitored region, never over it: the region is
+   read off the screen, so anything drawn on it would be read back. */
+.ocr-translate-live-region {
+  position: fixed;
+  z-index: 2147483646;
+  box-sizing: border-box;
+  border: 2px solid var(--ocr-marker);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--ocr-halo-fixed);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* The frame shows what is being read, then fades back until the region
+   moves. An error keeps it bright. */
+.ocr-translate-live-region.is-settled:not([data-status="error"]) {
+  opacity: 0.3;
+}
+
+.ocr-translate-live-region[data-status="paused"] {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.ocr-translate-live-region[data-status="error"] {
+  border-color: var(--ocr-danger);
+}
+
+.ocr-translate-live {
+  position: fixed;
+  z-index: 2147483647;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ocr-line);
+  border-radius: var(--ocr-radius-surface);
+  background: var(--ocr-panel-bg);
+  color: var(--ocr-ink);
+  box-shadow: var(--ocr-shadow-float);
+  font-family: var(--ocr-font);
+  font-size: var(--ocr-size-body);
+  line-height: var(--ocr-leading-body);
+  backdrop-filter: blur(18px);
+  animation: ocr-translate-loading-in var(--ocr-duration) var(--ocr-ease-out)
+    both;
+}
+
+.ocr-translate-live-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 3px 4px 3px 12px;
+  border-bottom: 1px solid var(--ocr-line);
+  background: var(--ocr-topbar-bg);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ocr-translate-live-topbar.is-dragging {
+  cursor: grabbing;
+}
+
+.ocr-translate-live-status {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ocr-success);
+}
+
+.ocr-translate-live[data-status="starting"] .ocr-translate-live-status {
+  background: var(--ocr-accent);
+  animation: ocr-translate-live-pulse 1.2s ease-in-out infinite;
+}
+
+.ocr-translate-live[data-status="paused"] .ocr-translate-live-status {
+  background: var(--ocr-ink-subtle);
+}
+
+.ocr-translate-live[data-status="error"] .ocr-translate-live-status {
+  background: var(--ocr-danger);
+}
+
+@keyframes ocr-translate-live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* The title and the languages right after it. When the bar is short of room
+   the title gives way first. The languages shorten only once it is gone. */
+.ocr-translate-live-heading {
+  display: flex;
+  align-items: baseline;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.ocr-translate-live-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ocr-ink);
+  font-size: var(--ocr-size-sm);
+  font-weight: 700;
+  letter-spacing: var(--ocr-tracking-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocr-translate-live-languages {
+  flex: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding-left: 8px;
+  overflow: hidden;
+  color: var(--ocr-ink-subtle);
+  font-size: var(--ocr-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocr-translate-live-languages:empty {
+  display: none;
+}
+
+.ocr-translate-live-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
+}
+
+.ocr-translate-live-actions .ocr-translate-popup-icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.ocr-translate-live-actions .ocr-translate-popup-icon-button[aria-pressed="true"],
+.ocr-translate-live-actions .ocr-translate-popup-icon-button[aria-expanded="true"] {
+  color: var(--ocr-accent-text);
+  background: var(--ocr-accent-fill);
+}
+
+/* The text size steps open under their button, over the lines. They float, so
+   changing the size never changes the panel's. */
+.ocr-translate-live-size {
+  position: relative;
+  display: inline-flex;
+}
+
+.ocr-translate-live-size-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--ocr-surface-pad);
+  border: 1px solid var(--ocr-line);
+  border-radius: var(--ocr-radius-surface);
+  background: var(--ocr-surface);
+  box-shadow: var(--ocr-shadow-float);
+  cursor: default;
+}
+
+.ocr-translate-live-size-popover[hidden] {
+  display: none;
+}
+
+.ocr-translate-live-size-value {
+  min-width: 44px;
+  color: var(--ocr-ink);
+  font-size: var(--ocr-size-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.ocr-translate-live-size-popover .ocr-translate-popup-icon-button {
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.ocr-translate-live-size-popover .ocr-translate-popup-icon-button:disabled {
+  color: var(--ocr-ink-subtle);
+  background: none;
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ocr-translate-live-lines {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 12px 12px;
+}
+
+.ocr-translate-live-lines.is-empty {
+  display: none;
+}
+
+/* The bar marks the line the region shows now. Its space stays reserved.
+   Keep rows at their natural height when the list overflows. */
+.ocr-translate-live-line {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: -8px;
+  padding-left: 6px;
+  border-left: 2px solid transparent;
+  transition: opacity var(--ocr-duration) var(--ocr-ease-out);
+}
+
+.ocr-translate-live-line.is-new {
+  animation: ocr-translate-live-line-in 0.18s var(--ocr-ease-out);
+}
+
+@keyframes ocr-translate-live-line-in {
+  from { opacity: 0; }
+}
+
+.ocr-translate-live-line.is-current {
+  border-left-color: var(--ocr-accent);
+}
+
+/* Earlier lines step back so the newest stands out. */
+.ocr-translate-live-line:not(:last-child) {
+  opacity: 0.7;
+}
+
+.ocr-translate-live-translation {
+  margin: 0;
+  color: var(--ocr-ink-strong);
+  font-size: calc(17px * var(--ocr-live-scale, 1));
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  transition: color var(--ocr-duration) var(--ocr-ease-out);
+}
+
+/* A line waiting for its translation shows the original in grey. It has no
+   note, so it keeps its height when the translation comes. */
+.ocr-translate-live-line[data-state="pending"] .ocr-translate-live-translation {
+  color: var(--ocr-ink-muted);
+}
+
+/* With the original shown above, a waiting line says so below it instead of
+   repeating the original in grey. */
+.ocr-translate-live-waiting {
+  margin: 0;
+  color: var(--ocr-ink-muted);
+  font-size: calc(17px * var(--ocr-live-scale, 1));
+  line-height: 1.4;
+}
+
+.ocr-translate-live-lines.is-showing-original
+  .ocr-translate-live-line[data-state="pending"]
+  .ocr-translate-live-translation {
+  display: none;
+}
+
+.ocr-translate-live-original {
+  margin: 0;
+  color: var(--ocr-ink-muted);
+  font-size: calc(var(--ocr-size-sm) * var(--ocr-live-scale, 1));
+  line-height: var(--ocr-leading-ui);
+  overflow-wrap: anywhere;
+}
+
+.ocr-translate-live-lines:not(.is-showing-original) .ocr-translate-live-original,
+.ocr-translate-live-lines:not(.is-showing-original) .ocr-translate-live-waiting,
+.ocr-translate-live-waiting:empty,
+.ocr-translate-live-translation:empty,
+.ocr-translate-live-original:empty,
+.ocr-translate-live-line-note:empty,
+.ocr-translate-live-note:empty {
+  display: none;
+}
+
+.ocr-translate-live-footer {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+}
+
+.ocr-translate-live-lines:not(.is-empty) + .ocr-translate-live-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--ocr-line);
+}
+
+/* An empty footer stays in place, so screen readers hear what shows up in it. */
+.ocr-translate-live-lines + .ocr-translate-live-footer.is-empty {
+  padding: 0;
+  border-top: 0;
+}
+
+/* Floats over the end of the list, just above the footer, while the list is
+   scrolled up. It stays in the layout so that it can fade. */
+.ocr-translate-live-latest {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 24px;
+  margin-left: -16px;
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  color: var(--ocr-on-accent);
+  background: var(--ocr-accent-solid);
+  box-shadow: var(--ocr-shadow-float);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--ocr-duration) var(--ocr-ease-out),
+    background-color var(--ocr-duration-fast) ease,
+    visibility 0s var(--ocr-duration);
+}
+
+.ocr-translate-live-latest.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.ocr-translate-live-latest:hover {
+  background: var(--ocr-accent-solid-hover);
+}
+
+.ocr-translate-live-line-note,
+.ocr-translate-live-note {
+  margin: 0;
+  color: var(--ocr-ink-subtle);
+  font-size: var(--ocr-size-xs);
+  line-height: var(--ocr-leading-ui);
+}
+
+.ocr-translate-live-line-note {
+  font-size: calc(var(--ocr-size-xs) * var(--ocr-live-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+.ocr-translate-live-line-note.is-error,
+.ocr-translate-live-note.is-error {
+  color: var(--ocr-danger);
+}
+
+.ocr-translate-live-retry {
+  align-self: flex-start;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: var(--ocr-size-sm);
+}
+
+.ocr-translate-live-retry[hidden] {
+  display: none;
+}
+
+/* Invisible strips along the edges and corners, like a window's. They sit
+   inside the panel because it clips its overflow. */
+.ocr-translate-live-resize {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.ocr-translate-live-resize.is-n { top: 0; left: 12px; right: 12px; height: 5px; cursor: ns-resize; }
+.ocr-translate-live-resize.is-s { bottom: 0; left: 12px; right: 12px; height: 5px; cursor: ns-resize; }
+.ocr-translate-live-resize.is-e { top: 12px; right: 0; bottom: 12px; width: 5px; cursor: ew-resize; }
+.ocr-translate-live-resize.is-w { top: 12px; left: 0; bottom: 12px; width: 5px; cursor: ew-resize; }
+.ocr-translate-live-resize.is-nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+.ocr-translate-live-resize.is-ne { top: 0; right: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.ocr-translate-live-resize.is-se { bottom: 0; right: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+.ocr-translate-live-resize.is-sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+
 @media (prefers-reduced-motion: reduce) {
   .ocr-translate-popup,
+  .ocr-translate-live,
+  .ocr-translate-live-status,
   .ocr-translate-overlay-status.is-loading,
   .ocr-translate-overlay-toolbar,
   .ocr-translate-overlay-toolbar.is-closing,
-  .ocr-translate-overlay-popover {
+  .ocr-translate-overlay-popover,
+  .ocr-translate-live-line.is-new {
     animation: none;
   }
 
@@ -1806,7 +2205,11 @@
   .ocr-translate-overlay-retry,
   .ocr-translate-overlay-popover-button,
   .ocr-translate-overlay-progress-fill,
-  .ocr-translate-popup-progress-fill {
+  .ocr-translate-popup-progress-fill,
+  .ocr-translate-live-region,
+  .ocr-translate-live-latest,
+  .ocr-translate-live-line,
+  .ocr-translate-live-translation {
     transition: none;
   }
 }

@@ -26,7 +26,7 @@ import {
 } from "./ort-env";
 import { computeDetSize, imageDataToNchw, type Rgb } from "./preprocess";
 import type { InitRequest, WorkerModelConfig } from "./protocol";
-import { RegionGrouper } from "./region-grouper";
+import { groupAsSingleRegion, RegionGrouper } from "./region-grouper";
 import {
   ScriptClassifier,
   type ScriptPrediction,
@@ -63,6 +63,13 @@ interface Manifest {
 export type EngineOptions = Omit<InitRequest, "type" | "id" | "debug"> & {
   debug?: boolean;
 };
+
+export interface RecognizeOptions {
+  /** "single" reads the lines as one paragraph, without the layout model. */
+  grouping?: "layout" | "single";
+  /** Lines whose box is thinner than this, in image pixels, are not read. */
+  minLineThickness?: number;
+}
 
 interface LoadedRecognizer {
   candidate: WorkerModelConfig;
@@ -186,6 +193,7 @@ export class PaddleEngine {
     sourceLang: string | undefined,
     isCancelled: () => boolean,
     onProgress?: (line: number, lineCount: number) => void,
+    options: RecognizeOptions = {},
   ): Promise<PipelineOcrResult> {
     const startedAt = now();
     const bitmap = await createImageBitmap(blob);
@@ -196,11 +204,19 @@ export class PaddleEngine {
         );
       }
 
-      const boxes = await this.detect(bitmap);
+      const detected = await this.detect(bitmap);
+      // Dropped before recognition: it saves reading them, and keeps text that
+      // does not matter from steering the script detection.
+      const boxes = this.dropThinBoxes(detected, options.minLineThickness);
       throwIfCancelled(isCancelled);
 
       if (this.debug) {
-        console.log(`${LOG_PREFIX} detector found ${boxes.length} box(es)`);
+        console.log(
+          `${LOG_PREFIX} detector found ${detected.length} box(es)` +
+            (boxes.length < detected.length
+              ? `, ${detected.length - boxes.length} dropped as too small`
+              : ""),
+        );
       }
 
       const sourceImageData = boxes.length > 0 ? bitmapToImageData(bitmap) : null;
@@ -228,15 +244,15 @@ export class PaddleEngine {
 
       const script = this.modelOptions.get(recognized.modelId)?.script;
       throwIfCancelled(isCancelled);
+      const single = options.grouping === "single";
       const groupingStartedAt = now();
-      const grouping = await this.regionGrouper.group(
-        sourceImageData,
-        recognized.lines,
-      );
+      const grouping = single
+        ? groupAsSingleRegion(recognized.lines)
+        : await this.regionGrouper.group(sourceImageData, recognized.lines);
       throwIfCancelled(isCancelled);
       if (this.debug) {
         console.log(
-          `${LOG_PREFIX} region grouping produced ${grouping.groups.length} group(s) from ${grouping.regionCount} region(s) in ${elapsed(groupingStartedAt)} (model=${this.regionGrouper.metadata.id}, threshold=${this.regionGrouper.metadata.confidenceThreshold}, matched=${grouping.matchedLineCount}/${recognized.lines.length})`,
+          `${LOG_PREFIX} region grouping produced ${grouping.groups.length} group(s) from ${grouping.regionCount} region(s) in ${elapsed(groupingStartedAt)} (${single ? "single region" : `model=${this.regionGrouper.metadata.id}, threshold=${this.regionGrouper.metadata.confidenceThreshold}`}, matched=${grouping.matchedLineCount}/${recognized.lines.length})`,
         );
       }
       const result = assembleGroupedResult(grouping.groups, {
@@ -435,6 +451,20 @@ export class PaddleEngine {
       }
       return undefined;
     }
+  }
+
+  /** Boxes whose short side, once padded like the line's own box, is at least
+   * `minThickness`. That side is the text's height, whichever way it reads. */
+  private dropThinBoxes(
+    boxes: DetectedBox[],
+    minThickness: number | undefined,
+  ): DetectedBox[] {
+    if (!minThickness) {
+      return boxes;
+    }
+    return boxes.filter(
+      (box) => this.lineFrame(box).oriented.rect.height >= minThickness,
+    );
   }
 
   private async recognizeAllLines(

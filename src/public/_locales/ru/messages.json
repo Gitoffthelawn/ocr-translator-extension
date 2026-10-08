@@ -6,10 +6,13 @@
     "message": "Распознавайте и переводите текст на изображениях или в любой части веб-страницы."
   },
   "commandTranslateScreenRegion": {
-    "message": "Перевести область экрана"
+    "message": "Перевести область"
+  },
+  "commandTranslateScreenRegionLive": {
+    "message": "Перевод в реальном времени"
   },
   "contextTranslateScreenRegion": {
-    "message": "Перевести область экрана…"
+    "message": "Перевести область…"
   },
   "contextTranslateImage": {
     "message": "Перевести это изображение"
@@ -300,10 +303,16 @@
     "message": "Панель"
   },
   "popupSelectArea": {
-    "message": "Выбрать область"
+    "message": "Перевести область"
   },
   "popupPickImage": {
-    "message": "Выбрать изображение"
+    "message": "Перевести изображение"
+  },
+  "popupLiveTranslation": {
+    "message": "Перевод в реальном времени"
+  },
+  "popupLiveTranslationHint": {
+    "message": "Переводите область экрана в реальном времени, например вшитые в видео субтитры."
   },
   "popupRestrictedPage": {
     "message": "Доступ к этой странице браузера ограничен, поэтому расширение не может с ней работать. Попробуйте на обычной веб-странице."
@@ -323,6 +332,9 @@
   "selectionDragArea": {
     "message": "Потяните мышью, чтобы выбрать область, или нажмите на изображение"
   },
+  "liveSelectionHint": {
+    "message": "Выберите область для перевода в реальном времени"
+  },
   "selectionPressKeyToCancel": {
     "message": "Нажмите $1 для отмены"
   },
@@ -334,6 +346,9 @@
   },
   "selectionRunOcr": {
     "message": "Перевести"
+  },
+  "liveSelectionStart": {
+    "message": "Начать"
   },
   "languageTargetTitle": {
     "message": "Язык перевода: $1"
@@ -379,6 +394,24 @@
   },
   "panelAlreadyInTargetLanguage": {
     "message": "Текст уже написан на языке перевода."
+  },
+  "liveWaitingForText": {
+    "message": "Ожидание текста…"
+  },
+  "livePause": {
+    "message": "Приостановить"
+  },
+  "liveResume": {
+    "message": "Продолжить"
+  },
+  "liveShowOriginal": {
+    "message": "Показать оригинал"
+  },
+  "liveHideOriginal": {
+    "message": "Скрыть оригинал"
+  },
+  "liveTextSize": {
+    "message": "Размер текста"
   },
   "overlayMoveToolbar": {
     "message": "Переместить тулбар"

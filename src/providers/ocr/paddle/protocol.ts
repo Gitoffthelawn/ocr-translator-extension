@@ -34,6 +34,10 @@ export interface RecognizeRequest {
   id: number;
   image: Blob;
   sourceLang?: string;
+  /** "single" skips the layout model and reads the lines as one paragraph. */
+  grouping?: "layout" | "single";
+  /** Skip lines whose box is thinner than this, in image pixels. */
+  minLineThickness?: number;
 }
 
 export interface CancelRequest {

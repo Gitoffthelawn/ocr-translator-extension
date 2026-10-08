@@ -28,6 +28,15 @@ export interface OcrProvider {
 export interface OcrInput {
   image: Blob | ImageData;
   sourceLang?: LangCode | "auto";
+  /** "single" reads all lines as one paragraph and skips layout analysis,
+   * which is faster for a strip of text such as subtitles. Defaults to
+   * "layout". */
+  grouping?: "layout" | "single";
+  /** Lines thinner than this are skipped before they are read, which drops
+   * interface text around what matters. It is the short side of a detected
+   * line's box in image pixels: the `oriented.rect.height` of a result block
+   * measures the same thing. */
+  minLineThickness?: number;
 }
 
 export interface OcrResult extends PipelineOcrResult {}

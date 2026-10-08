@@ -1,8 +1,66 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadImage } from "./capture";
+import { loadImage, maskRectInCrop } from "./capture";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("captureLiveFrame", () => {
+  const args = {
+    rect: { x: 0, y: 0, width: 100, height: 40 },
+    viewport: { width: 800, height: 600 },
+    tabId: 7,
+    windowId: 3,
+  };
+
+  it("does not capture once another tab is active", async () => {
+    vi.resetModules();
+    const { captureLiveFrame } = await import("./capture");
+    const query = vi.fn(async () => [{ id: 8 }]);
+    const captureVisibleTab = vi.fn();
+    vi.stubGlobal("browser", {
+      tabs: { query, captureVisibleTab },
+    });
+
+    await expect(captureLiveFrame(args)).resolves.toBeUndefined();
+    expect(captureVisibleTab).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledWith({ active: true, windowId: 3 });
+  });
+
+  it("discards a capture if the active tab changes during it", async () => {
+    vi.resetModules();
+    const { captureLiveFrame } = await import("./capture");
+    let activeTabId = 7;
+    const query = vi.fn(async () => [{ id: activeTabId }]);
+    const captureVisibleTab = vi.fn(async () => {
+      activeTabId = 8;
+      return "unused screenshot";
+    });
+    vi.stubGlobal("browser", {
+      tabs: { query, captureVisibleTab },
+    });
+
+    await expect(captureLiveFrame(args)).resolves.toBeUndefined();
+    expect(captureVisibleTab).toHaveBeenCalledWith(3, {
+      format: "jpeg",
+      quality: 92,
+    });
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not capture a region scrolled out of view", async () => {
+    vi.resetModules();
+    const { captureLiveFrame } = await import("./capture");
+    const query = vi.fn(async () => [{ id: 7 }]);
+    const captureVisibleTab = vi.fn();
+    vi.stubGlobal("browser", {
+      tabs: { query, captureVisibleTab },
+    });
+
+    const above = { x: 0, y: -40, width: 100, height: 40 };
+    await expect(captureLiveFrame({ ...args, rect: above })).resolves.toBeUndefined();
+    expect(captureVisibleTab).not.toHaveBeenCalled();
+  });
 });
 
 describe("loadImage", () => {
@@ -92,5 +150,36 @@ describe("loadImage", () => {
     expect(updateSessionRules).toHaveBeenNthCalledWith(2, {
       removeRuleIds: [ruleId],
     });
+  });
+});
+
+describe("maskRectInCrop", () => {
+  const viewport = { width: 1000, height: 500 };
+
+  it("places a viewport rect in the cropped canvas", () => {
+    // A 2000x1000 screenshot of a 1000x500 viewport: two pixels per CSS pixel.
+    const crop = { x: 200, y: 100, width: 800, height: 200 };
+
+    expect(
+      maskRectInCrop(
+        { x: 150, y: 80, width: 100, height: 30 },
+        crop,
+        { width: 2000, height: 1000 },
+        viewport,
+      ),
+    ).toEqual({ x: 100, y: 60, width: 200, height: 60 });
+  });
+
+  it("rounds outwards so no touched pixel is left unmasked", () => {
+    const crop = { x: 0, y: 0, width: 1000, height: 500 };
+
+    expect(
+      maskRectInCrop(
+        { x: 10.4, y: 20.4, width: 10.2, height: 5.2 },
+        crop,
+        { width: 1000, height: 500 },
+        viewport,
+      ),
+    ).toEqual({ x: 10, y: 20, width: 11, height: 6 });
   });
 });
