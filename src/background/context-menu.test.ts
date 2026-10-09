@@ -38,7 +38,7 @@ describe("OCR context menu", () => {
     expect(create).toHaveBeenCalledWith({
       id: START_SELECTION_MENU_ID,
       title: "Translate an area…",
-      contexts: ["page"],
+      contexts: ["page", "frame"],
       documentUrlPatterns,
     });
     expect(create).toHaveBeenCalledWith({
@@ -141,7 +141,7 @@ function createContextMenuApi(overrides: {
   create?: (properties: {
     id: string;
     title: string;
-    contexts: Array<"page" | "image">;
+    contexts: Array<"page" | "frame" | "image">;
     documentUrlPatterns?: string[];
   }) => string | number;
   update?: (id: string, changes: { title: string }) => Promise<void>;

@@ -34,7 +34,8 @@ export function startContextMenu(
     contextMenus.create({
       id: START_SELECTION_MENU_ID,
       title: t("contextTranslateScreenRegion"),
-      contexts: ["page"],
+      // Firefox reports "frame" instead of "page" inside an iframe.
+      contexts: ["page", "frame"],
       documentUrlPatterns: CONTENT_SCRIPT_PATTERNS,
     });
     contextMenus.create({
