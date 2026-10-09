@@ -37,6 +37,7 @@ const MIN_LINE_THICKNESS = 18;
 /** The last region that was actually read in a live session, and what it said.
  * The next capture is compared with this one. */
 interface LiveReading {
+  modelId?: string;
   signature: FrameSignature;
   text: string;
   /** The thinnest line that was read, in image pixels. A look at the same
@@ -126,6 +127,8 @@ export async function handleLiveFrameRequest(
       {
         image,
         sourceLang: sourceLanguage.sourceLang,
+        modelId:
+          sourceLanguage.sourceLang === "auto" ? previous?.modelId : undefined,
         grouping: "single",
         minLineThickness,
       },
@@ -133,7 +136,16 @@ export async function handleLiveFrameRequest(
     );
 
   const lineThickness = thickestLine(recognized.blocks, regionHeight);
+  const metadata = recognized.providerMeta as { modelId?: unknown } | undefined;
+  const modelId =
+    previous?.modelId ??
+    (sourceLanguage.sourceLang === "auto" &&
+    recognized.text.trim() &&
+    typeof metadata?.modelId === "string"
+      ? metadata.modelId
+      : undefined);
   sessions.set(message.sessionId, {
+    modelId,
     signature: frame.signature,
     text: recognized.text,
     minLineThickness,

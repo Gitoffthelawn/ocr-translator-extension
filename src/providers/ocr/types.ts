@@ -28,6 +28,8 @@ export interface OcrProvider {
 export interface OcrInput {
   image: Blob | ImageData;
   sourceLang?: LangCode | "auto";
+  /** Reuse a previously selected recognizer without script detection. */
+  modelId?: string;
   /** "single" reads all lines as one paragraph and skips layout analysis,
    * which is faster for a strip of text such as subtitles. Defaults to
    * "layout". */
@@ -44,4 +46,3 @@ export interface OcrResult extends PipelineOcrResult {}
 export interface OcrProviderFactory<TConfig = unknown> {
   (config?: TConfig): OcrProvider;
 }
-

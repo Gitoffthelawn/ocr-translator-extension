@@ -98,6 +98,21 @@ describe("createPaddleOcrProvider", () => {
     expect(recognize.grouping).toBe("single");
   });
 
+  it("forwards a session's selected model to the worker", async () => {
+    const fake = new FakeWorker();
+    const provider = makeProvider(fake);
+
+    void provider.recognize({
+      image: new Blob(["img"]),
+      sourceLang: "auto",
+      modelId: "v6-cyrillic",
+    });
+    await tick();
+
+    const [recognize] = fake.ofType("recognize");
+    expect(recognize.modelId).toBe("v6-cyrillic");
+  });
+
   it("forwards the smallest line thickness to the worker", async () => {
     const fake = new FakeWorker();
     const provider = makeProvider(fake);

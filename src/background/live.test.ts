@@ -77,6 +77,56 @@ function setup(options: {
 const signal = () => new AbortController().signal;
 
 describe("handleLiveFrameRequest", () => {
+  it("reuses the first detected model through changed and empty frames", async () => {
+    const { dependencies, recognize, sessions } = setup({
+      frames: [frameOf(10), frameOf(200), frameOf(10), frameOf(200)],
+    });
+    recognize
+      .mockResolvedValueOnce({ text: "", providerMeta: { modelId: "v6-multi" } })
+      .mockResolvedValueOnce({ text: "Hello", providerMeta: { modelId: "v6-cyrillic" } })
+      .mockResolvedValueOnce({ text: "", providerMeta: { modelId: "v6-multi" } });
+
+    for (let read = 0; read < 4; read += 1) {
+      await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+    }
+
+    expect(recognize.mock.calls.map(([input]) => input.modelId)).toEqual([
+      undefined, undefined, "v6-cyrillic", "v6-cyrillic",
+    ]);
+  });
+
+  it("detects the model independently for new and restarted sessions", async () => {
+    const { dependencies, recognize, sessions } = setup({
+      frames: [frameOf(10), frameOf(10), frameOf(10)],
+    });
+    recognize.mockResolvedValue({ text: "Hello", providerMeta: { modelId: "v6-cyrillic" } });
+
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage({ sessionId: "other" }), visibleTab, signal());
+    sessions.end("session-1");
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+
+    expect(recognize.mock.calls.map(([input]) => input.modelId)).toEqual([
+      undefined, undefined, undefined,
+    ]);
+  });
+
+  it("does not pin a model for an explicit source language", async () => {
+    const { dependencies, recognize, sessions } = setup({
+      frames: [frameOf(10), frameOf(200)],
+      settings: {
+        ...defaultSettings,
+        ocr: { ...defaultSettings.ocr, sourceLang: "ja" },
+      },
+    });
+    recognize.mockResolvedValue({ text: "Hello", providerMeta: { modelId: "v6-multi" } });
+
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+
+    expect(recognize.mock.calls.map(([input]) => input.modelId)).toEqual([undefined, undefined]);
+  });
+
   it("reads the text in the region as a single block", async () => {
     const { dependencies, recognize, sessions } = setup({});
 

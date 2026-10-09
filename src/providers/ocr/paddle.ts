@@ -251,6 +251,7 @@ export function createPaddleOcrProvider(rawConfig?: unknown): OcrProvider {
           id,
           image,
           sourceLang: input.sourceLang,
+          modelId: input.modelId,
           grouping: input.grouping,
           minLineThickness: input.minLineThickness,
         });

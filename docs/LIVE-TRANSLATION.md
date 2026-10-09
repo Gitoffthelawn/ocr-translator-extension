@@ -34,6 +34,12 @@ The first read that finds text sets the subtitle size. From then on, lines thinn
 
 Select the area while a subtitle is on screen. The first read only sets the size and is not shown.
 
+## Script detection
+
+With the source language set to Auto, the first OCR result with non-empty text selects the recognizer model for the session.
+
+An explicit source language uses its configured recognizer without running the script classifier.
+
 ## Translation
 
 - Up to 3 translations run at once. When a fourth starts, the oldest is dropped and its line is marked as skipped.

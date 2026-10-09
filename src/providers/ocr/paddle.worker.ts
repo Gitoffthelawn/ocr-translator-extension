@@ -68,6 +68,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           post({ type: "progress", id: message.id, line, lineCount }),
         {
           grouping: message.grouping,
+          modelId: message.modelId,
           minLineThickness: message.minLineThickness,
         },
       );

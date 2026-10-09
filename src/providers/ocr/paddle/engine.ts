@@ -65,6 +65,7 @@ export type EngineOptions = Omit<InitRequest, "type" | "id" | "debug"> & {
 };
 
 export interface RecognizeOptions {
+  modelId?: string;
   /** "single" reads the lines as one paragraph, without the layout model. */
   grouping?: "layout" | "single";
   /** Lines whose box is thinner than this, in image pixels, are not read. */
@@ -220,7 +221,9 @@ export class PaddleEngine {
       }
 
       const sourceImageData = boxes.length > 0 ? bitmapToImageData(bitmap) : null;
-      const auto = sourceLang === "auto" && this.modelOptions.size > 1;
+      const modelId = options.modelId ?? this.primaryModelId;
+      const auto =
+        sourceLang === "auto" && !options.modelId && this.modelOptions.size > 1;
       const autoRecognition = auto
         ? await this.recognizeAuto(
             sourceImageData,
@@ -235,11 +238,11 @@ export class PaddleEngine {
           lines: await this.recognizeAllLines(
             sourceImageData,
             boxes,
-            await this.getRecognizer(this.primaryModelId),
+            await this.getRecognizer(modelId),
             isCancelled,
             onProgress,
           ),
-          modelId: this.primaryModelId,
+          modelId,
       };
 
       const script = this.modelOptions.get(recognized.modelId)?.script;
