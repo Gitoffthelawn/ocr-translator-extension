@@ -6,8 +6,8 @@
   --text: #21201c;
   --muted: #6f6a5e;
   /* Deep enough for white text, so dark mode keeps it too. */
-  --primary-bg: #2c66ba;
-  --primary-bg-hover: #255aa3;
+  --primary-bg: #3a72c4;
+  --primary-bg-hover: #3268b6;
   --secondary: #14b8a6;
   --secondary-text: #0f766e;
   --secondary-focus-ring: rgba(20, 184, 166, 0.24);
@@ -271,7 +271,7 @@ select:disabled,
 }
 
 .shortcut-key {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.95);
   font: inherit;
   font-size: 12px;
   font-weight: 400;

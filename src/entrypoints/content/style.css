@@ -3,7 +3,9 @@
   all: initial;
   /* `all` does not reset direction, so isolate the controls from RTL pages. */
   direction: ltr;
-  color-scheme: light dark;
+  /* WXT prepends `:host { all: initial !important }`, which would reset this to
+     `normal`. Chrome then draws light scrollbars on dark panels. */
+  color-scheme: light dark !important;
 
   --ocr-font:
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
@@ -1776,7 +1778,7 @@
   position: fixed;
   z-index: 2147483646;
   box-sizing: border-box;
-  border: 2px solid var(--ocr-marker);
+  border: 1px solid #8a9bae;
   border-radius: 4px;
   box-shadow: 0 0 0 1px var(--ocr-halo-fixed);
   pointer-events: none;
