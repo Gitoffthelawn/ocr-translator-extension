@@ -36,7 +36,10 @@ const fullscreenPanelCode = await compile(
   "live-panel-fullscreen",
   panelStubs,
 );
-const selectionCode = await compile(["image-picker.ts", "selection-overlay.ts"], "selection");
+const selectionCode = await compile(
+  ["image-picker.ts", "frame-images.ts", "selection-overlay.ts"],
+  "selection",
+);
 const modalCode = await compile(["modal-ui.ts"], "modal-ui");
 const regionCode = await compile(
   ["image-picker.ts", "overlay-layout.ts", "live-region.ts"],

@@ -6,13 +6,13 @@
     "message": "Розпізнавайте та перекладайте текст на зображеннях або в будь-якій частині вебсторінки."
   },
   "commandTranslateScreenRegion": {
-    "message": "Перекласти ділянку"
+    "message": "Перекласти ділянку/зображення"
   },
   "commandTranslateScreenRegionLive": {
     "message": "Переклад наживо"
   },
   "contextTranslateScreenRegion": {
-    "message": "Перекласти ділянку…"
+    "message": "Перекласти ділянку/зображення…"
   },
   "contextTranslateImage": {
     "message": "Перекласти це зображення"
@@ -281,9 +281,6 @@
   "popupStartingSelection": {
     "message": "Запускаємо вибір…"
   },
-  "popupStartingImagePicker": {
-    "message": "Запускаємо вибір зображення…"
-  },
   "popupSourceLanguage": {
     "message": "Мова оригіналу"
   },
@@ -303,10 +300,7 @@
     "message": "Панель"
   },
   "popupSelectArea": {
-    "message": "Перекласти ділянку"
-  },
-  "popupPickImage": {
-    "message": "Перекласти зображення"
+    "message": "Перекласти ділянку/зображення"
   },
   "popupLiveTranslation": {
     "message": "Переклад наживо"
@@ -337,9 +331,6 @@
   },
   "selectionPressKeyToCancel": {
     "message": "Натисніть $1 для скасування"
-  },
-  "imagePickerSelectImage": {
-    "message": "Натисніть зображення, щоб перекласти"
   },
   "selectionResize": {
     "message": "Змінити розмір виділення"

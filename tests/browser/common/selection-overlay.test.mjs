@@ -6,10 +6,11 @@ import { transformWithOxc } from "vite";
 
 const contentDir = new URL("../../../src/entrypoints/content/", import.meta.url);
 const pickerSource = await readFile(new URL("image-picker.ts", contentDir), "utf8");
+const frameSource = await readFile(new URL("frame-images.ts", contentDir), "utf8");
 const selectionSource = await readFile(new URL("selection-overlay.ts", contentDir), "utf8");
 const css = await readFile(new URL("style.css", contentDir), "utf8");
 const { code } = await transformWithOxc(
-  ["const t = (key: string) => key;", pickerSource, selectionSource]
+  ["const t = (key: string) => key;", pickerSource, frameSource, selectionSource]
     .join("\n")
     .replace(/^import .*;\n/gm, ""),
   "selection-overlay.ts",
@@ -67,12 +68,6 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
           document.body.append(outer);
 
           window.release = releaseSelectionDim;
-          window.pick = () => {
-            window.picked = "pending";
-            startImagePickerOverlay(container).then((result) => {
-              window.picked = result?.id ?? null;
-            });
-          };
           window.start = (adjust) => {
             window.selection = "pending";
             startSelectionOverlay(container, adjust).then((result) => {
@@ -87,10 +82,6 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       const frame = page.locator(".ocr-translate-image-picker-frame");
       const start = async (adjust) => {
         await page.evaluate((adjust) => window.start(adjust), adjust);
-        await nextPaint(page);
-      };
-      const pick = async () => {
-        await page.evaluate(() => window.pick());
         await nextPaint(page);
       };
       const settled = async () => {
@@ -155,7 +146,7 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       assert.equal(await frame.isVisible(), false);
       await page.evaluate(() => window.release());
 
-      // Images inside open shadow roots, as Pick image finds them.
+      // Images inside open shadow roots.
       await start(true);
       await page.mouse.move(200, 480);
       assert.deepEqual(await frame.boundingBox(), { x: 100, y: 420, width: 200, height: 120 });
@@ -187,18 +178,144 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       await page.keyboard.press("Escape");
       assert.equal(await settled(), null);
       assert.equal(await page.locator(".ocr-translate-selection-overlay").count(), 0);
+    } finally {
+      await browser.close();
+    }
+  });
 
-      // Pick image uses the same lookup.
-      await pick();
-      await page.mouse.move(250, 250);
-      assert.deepEqual(await frame.boundingBox(), { x: 100, y: 150, width: 300, height: 200 });
-      await page.mouse.move(650, 450);
-      assert.equal(await frame.isVisible(), false);
-      await page.mouse.move(200, 480);
-      assert.deepEqual(await frame.boundingBox(), { x: 100, y: 420, width: 200, height: 120 });
-      await page.mouse.click(200, 480);
-      await page.waitForFunction(() => window.picked !== "pending");
-      assert.equal(await page.evaluate(() => window.picked), "shadowed");
+  test(`${name}: region selection picks an image inside an iframe`, async () => {
+    const browser = await browserType.launch({
+      headless: true,
+      executablePath: process.env[`${name.toUpperCase()}_TEST_EXECUTABLE`],
+    });
+    try {
+      const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+      const srcdoc = (html) => html.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+      const nested = `
+        <body style="margin:0">
+          <img id="tall" src="${svg}" style="position:absolute; left:10px; top:10px; width:100px; height:200px">
+        </body>
+      `;
+      const outer = `
+        <body style="margin:0">
+          <img id="wide" src="${svg}" style="position:absolute; left:20px; top:30px; width:200px; height:100px">
+          <iframe name="2" srcdoc="${srcdoc(nested)}" style="position:absolute; left:250px; top:150px; width:120px; height:100px; border:0"></iframe>
+        </body>
+      `;
+      const scaled = `
+        <body style="margin:0">
+          <img id="square" src="${svg}" style="position:absolute; left:40px; top:40px; width:100px; height:100px">
+        </body>
+      `;
+      await page.setContent(`
+        <body style="margin:0">
+          <iframe name="1" srcdoc="${srcdoc(outer)}" style="position:absolute; left:100px; top:100px; width:400px; height:300px; border:5px solid; padding:10px"></iframe>
+          <iframe name="3" srcdoc="${srcdoc(scaled)}" style="position:absolute; left:550px; top:100px; width:200px; height:200px; border:0; transform:scale(0.5); transform-origin:0 0"></iframe>
+          <iframe srcdoc="${srcdoc(scaled)}" style="position:absolute; left:550px; top:300px; width:200px; height:200px; border:0"></iframe>
+        </body>
+      `);
+      await page.addScriptTag({
+        type: "module",
+        content: `${code}
+          const host = document.createElement("div");
+          document.body.append(host);
+          const shadow = host.attachShadow({ mode: "open" });
+          const style = document.createElement("style");
+          style.textContent = ${JSON.stringify(css)};
+          const container = document.createElement("div");
+          shadow.append(style, container);
+          // Stands in for the background, which adds the frame ID.
+          window.receive = receiveFrameImage;
+          window.release = releaseSelectionDim;
+          window.outline = () => {
+            const frame = container.querySelector(".ocr-translate-image-picker-frame");
+            if (!frame || frame.hidden) {
+              return null;
+            }
+            const { x, y, width, height } = frame.getBoundingClientRect();
+            return { x, y, width, height };
+          };
+          window.start = () => {
+            window.selection = "pending";
+            startSelectionOverlay(container, false).then((result) => {
+              window.selection = result;
+            });
+          };
+        `,
+      });
+      // The last iframe has no content script, so it never answers.
+      for (const frameName of ["1", "2", "3"]) {
+        await page.frame({ name: frameName }).addScriptTag({
+          type: "module",
+          content: `${code}
+            window.addEventListener("message", (event) => {
+              answerFrameImageProbe(event, undefined, (answer) =>
+                window.top.receive({ ...answer, frameId: Number(window.name) }),
+              );
+            });
+            window.imageAt = (point) => findImageAtPoint(point.x, point.y)?.id;
+          `,
+        });
+      }
+      await page.waitForFunction(() => Boolean(window.start));
+      const start = async () => {
+        await page.evaluate(() => window.start());
+        await nextPaint(page);
+      };
+      const settled = async () => {
+        await page.waitForFunction(() => window.selection !== "pending");
+        return page.evaluate(() => window.selection);
+      };
+      const outlineAt = async (x, y, expected) => {
+        await page.mouse.move(x, y);
+        await page.waitForFunction(
+          (expected) => JSON.stringify(window.outline()) === JSON.stringify(expected),
+          expected,
+        );
+      };
+
+      await start();
+
+      // The iframe's border and padding offset its page.
+      await outlineAt(200, 200, { x: 135, y: 145, width: 200, height: 100 });
+      await outlineAt(150, 380, null);
+      // A nested iframe clips the image to its own viewport.
+      await outlineAt(400, 300, { x: 375, y: 275, width: 100, height: 90 });
+      // A scaled iframe scales its page.
+      await outlineAt(590, 140, { x: 570, y: 120, width: 50, height: 50 });
+      await outlineAt(650, 350, null);
+      // Hover resumes after an iframe that never answers.
+      await outlineAt(200, 200, { x: 135, y: 145, width: 200, height: 100 });
+
+      // A drag that starts on an iframe image still selects an area.
+      await page.mouse.down();
+      await page.mouse.move(300, 300, { steps: 5 });
+      await page.mouse.up();
+      assert.deepEqual(await settled(), {
+        kind: "area",
+        rect: { x: 200, y: 200, width: 100, height: 100 },
+      });
+      await page.evaluate(() => window.release());
+
+      // A click picks the image in the frame that found it. That frame shows
+      // the result, so no dim stays behind in the top frame.
+      await start();
+      await outlineAt(400, 300, { x: 375, y: 275, width: 100, height: 90 });
+      await page.mouse.click(400, 300);
+      const selection = await settled();
+      assert.deepEqual(selection, {
+        kind: "frame-image",
+        image: {
+          frameId: 2,
+          rect: { x: 375, y: 275, width: 100, height: 90 },
+          point: { x: 35, y: 35 },
+        },
+      });
+      assert.equal(await page.locator(".ocr-translate-selection-overlay").count(), 0);
+      assert.equal(
+        await page.frame({ name: "2" }).evaluate((point) => window.imageAt(point), selection.image.point),
+        "tall",
+      );
     } finally {
       await browser.close();
     }

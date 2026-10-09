@@ -37,7 +37,7 @@ describe("OCR context menu", () => {
     const documentUrlPatterns = ["http://*/*", "https://*/*", "file:///*"];
     expect(create).toHaveBeenCalledWith({
       id: START_SELECTION_MENU_ID,
-      title: "Translate an area…",
+      title: "Translate area or image…",
       contexts: ["page", "frame"],
       documentUrlPatterns,
     });
@@ -57,7 +57,7 @@ describe("OCR context menu", () => {
 
     await Promise.resolve();
     expect(update).toHaveBeenCalledWith(START_SELECTION_MENU_ID, {
-      title: "Translate an area…",
+      title: "Translate area or image…",
     });
     expect(update).toHaveBeenCalledWith(TRANSLATE_IMAGE_MENU_ID, {
       title: "Translate this image",

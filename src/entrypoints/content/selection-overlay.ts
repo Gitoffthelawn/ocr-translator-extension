@@ -1,5 +1,6 @@
 import type { Rect } from "@/shared/types";
 import { t } from "@/shared/i18n";
+import { findFrameImage, type FrameImage } from "./frame-images";
 import { findImageAtPoint } from "./image-picker";
 
 interface Point {
@@ -8,16 +9,18 @@ interface Point {
 }
 
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+type PickedImage =
+  | { kind: "image"; image: HTMLImageElement }
+  // An image in an iframe, translated by that frame's content script.
+  | { kind: "frame-image"; image: FrameImage };
 type DragState =
-  | { kind: "press"; start: Point; image: HTMLImageElement }
+  | { kind: "press"; start: Point; target: PickedImage }
   | { kind: "draw"; start: Point }
   | { kind: "move"; start: Point; rect: Rect }
   | { kind: "resize"; start: Point; rect: Rect; handle: Handle }
   | null;
 
-export type SelectionResult =
-  | { kind: "area"; rect: Rect }
-  | { kind: "image"; image: HTMLImageElement };
+export type SelectionResult = { kind: "area"; rect: Rect } | PickedImage;
 
 export interface SelectionOptions {
   /** Let a click on an image pick it whole. On by default. */
@@ -70,8 +73,14 @@ export function startSelectionOverlay(
 
     let dragState: DragState = null;
     let currentRect: Rect | null = null;
-    let hoveredImage: HTMLImageElement | undefined;
+    let hoveredImage: PickedImage | undefined;
     let lastPointer: Point | undefined;
+    let finished = false;
+    // An iframe under the pointer is asked for its image asynchronously, one
+    // probe at a time. A move made while one is out is probed after it.
+    let hoveredFrame: HTMLIFrameElement | undefined;
+    let probing = false;
+    let probeAgain = false;
 
     const overlay = document.createElement("div");
     overlay.className = "ocr-translate-selection-overlay";
@@ -146,6 +155,7 @@ export function startSelectionOverlay(
     overlay.focus({ preventScroll: true });
 
     function cleanup(result: SelectionResult | null): void {
+      finished = true;
       document.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("scroll", updateImageHover, true);
       window.removeEventListener("resize", updateImageHover);
@@ -153,7 +163,9 @@ export function startSelectionOverlay(
       // Chromium; the hover must not reset the dim after that.
       overlay.removeEventListener("pointerleave", onPointerLeave);
       cancelActiveSelection = undefined;
-      if (result) {
+      // An iframe shows its own views, and the top frame never learns when
+      // they appear, so a dim kept here would stay.
+      if (result && result.kind !== "frame-image") {
         // Keep the dim; hide the selection chrome so none of it (the border is
         // drawn inside the rect) lands in the screenshot.
         overlay.classList.add("is-capturing");
@@ -166,9 +178,7 @@ export function startSelectionOverlay(
         // measured again in case it moved since the last hover.
         updateDim(
           outsetRect(
-            result.kind === "area"
-              ? result.rect
-              : result.image.getBoundingClientRect(),
+            result.kind === "area" ? result.rect : pickedImageRect(result),
             2 / window.devicePixelRatio,
           ),
         );
@@ -198,7 +208,7 @@ export function startSelectionOverlay(
         // Touch and pen presses may arrive without a hover first.
         updateImageHover();
         if (hoveredImage) {
-          dragState = { kind: "press", start: lastPointer, image: hoveredImage };
+          dragState = { kind: "press", start: lastPointer, target: hoveredImage };
         } else {
           startDrawing(lastPointer);
         }
@@ -276,10 +286,10 @@ export function startSelectionOverlay(
       lastPointer = pointFromEvent(event);
 
       if (dragState.kind === "press") {
-        const { image } = dragState;
+        const { target } = dragState;
         dragState = null;
-        if (image.isConnected) {
-          cleanup({ kind: "image", image });
+        if (target.kind === "frame-image" || target.image.isConnected) {
+          cleanup(target);
         } else {
           updateImageHover();
         }
@@ -355,20 +365,58 @@ export function startSelectionOverlay(
       if (!pickImages || dragState || currentRect) {
         return;
       }
-      hoveredImage = lastPointer
-        ? findImageAtPoint(lastPointer.x, lastPointer.y, {
-            minSize: MIN_SIZE,
-            ignore: uiHost,
-          })
-        : undefined;
-      if (!hoveredImage) {
+      if (!lastPointer) {
+        hoveredFrame = undefined;
+        showImageHover(undefined);
+        return;
+      }
+      const target = findImageAtPoint(lastPointer.x, lastPointer.y, uiHost);
+      if (!(target instanceof HTMLIFrameElement)) {
+        hoveredFrame = undefined;
+        showImageHover(target && { kind: "image", image: target });
+        return;
+      }
+      if (target !== hoveredFrame) {
+        // Nothing is known about this iframe until it answers.
+        hoveredFrame = target;
+        showImageHover(undefined);
+      }
+      probeFrame(target, lastPointer);
+    }
+
+    function probeFrame(frame: HTMLIFrameElement, point: Point): void {
+      if (probing) {
+        probeAgain = true;
+        return;
+      }
+      probing = true;
+      void findFrameImage(frame, point).then((image) => {
+        probing = false;
+        const again = probeAgain;
+        probeAgain = false;
+        if (finished || dragState || currentRect) {
+          return;
+        }
+        // The pointer may have left the iframe while it was answering.
+        if (frame === hoveredFrame) {
+          showImageHover(image && { kind: "frame-image", image });
+        }
+        if (again) {
+          updateImageHover();
+        }
+      });
+    }
+
+    function showImageHover(target: PickedImage | undefined): void {
+      hoveredImage = target;
+      if (!target) {
         imageFrame.hidden = true;
         dim.classList.remove("is-cutout");
         dim.removeAttribute("style");
         return;
       }
 
-      const rect = hoveredImage.getBoundingClientRect();
+      const rect = pickedImageRect(target);
       imageFrame.hidden = false;
       imageFrame.style.left = `${rect.x}px`;
       imageFrame.style.top = `${rect.y}px`;
@@ -545,6 +593,12 @@ export function startSelectionOverlay(
     window.addEventListener("scroll", updateImageHover, true);
     window.addEventListener("resize", updateImageHover);
   });
+}
+
+function pickedImageRect(target: PickedImage): Rect {
+  return target.kind === "image"
+    ? target.image.getBoundingClientRect()
+    : target.image.rect;
 }
 
 function pointFromEvent(event: PointerEvent): Point {

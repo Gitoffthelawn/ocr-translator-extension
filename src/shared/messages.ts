@@ -26,17 +26,21 @@ export type RuntimeMessage =
   | {
       type: "START_LIVE_SELECTION";
     }
+  // Content (iframe) -> background -> content (top frame): the image an
+  // iframe found at a point region selection asked about. The background adds
+  // the iframe's ID. `image` is absent when nothing is there.
   | {
-      type: "START_IMAGE_PICKER";
-      sessionId: string;
+      type: "FRAME_IMAGE_AT_POINT";
+      probeId: number;
+      frameId?: number;
+      image?: { rect: Rect; point: { x: number; y: number } };
     }
+  // Content (top frame) -> background -> content (iframe `frameId`):
+  // translate the image at `point`, picked during region selection.
   | {
-      type: "END_IMAGE_PICKER";
-      sessionId: string;
-    }
-  | {
-      type: "CANCEL_IMAGE_PICKER";
-      sessionId: string;
+      type: "TRANSLATE_FRAME_IMAGE";
+      frameId: number;
+      point: { x: number; y: number };
     }
   | {
       type: "START_IMAGE_TRANSLATION";

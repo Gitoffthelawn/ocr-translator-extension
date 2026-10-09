@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 import test from "node:test";
-import { Builder, By } from "selenium-webdriver";
+import { Builder, By, Origin } from "selenium-webdriver";
 import * as firefox from "selenium-webdriver/firefox.js";
 
 test("initializes the Firefox OCR host and recognizes data URLs and iframe blobs", {
@@ -151,18 +151,19 @@ test("initializes the Firefox OCR host and recognizes data URLs and iframe blobs
       "cyrillic",
     );
     assert.ok(autoOcr?.blocks?.length >= 2);
-    await checkBlobImagePicker(driver);
+    await checkBlobImageInFrame(driver);
   } finally {
     await driver.quit();
   }
 });
 
-async function checkBlobImagePicker(driver) {
+async function checkBlobImageInFrame(driver) {
   const server = createServer((request, response) => {
     response.writeHead(200, { "Content-Type": "text/html" });
     response.end(request.url === "/frame"
       ? '<!doctype html><img id="sample" style="position:absolute;left:12vw;top:12vh;width:40vw;height:36vh">'
-      : '<!doctype html><body style="background:blue"><iframe src="/frame" style="position:fixed;left:60vw;top:45vh;width:36vw;height:50vh;border:0"></iframe>');
+      // A cross-origin frame, so Firefox runs it in a process of its own.
+      : `<!doctype html><body style="background:blue"><iframe src="http://localhost:${server.address().port}/frame" style="position:fixed;left:60vw;top:45vh;width:36vw;height:50vh;border:0"></iframe>`);
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
@@ -203,24 +204,50 @@ async function checkBlobImagePicker(driver) {
       });
     });
 
+    const imageBounds = await driver.executeScript(() =>
+      document.querySelector("#sample").getBoundingClientRect().toJSON(),
+    );
+    await driver.switchTo().defaultContent();
+    const frameBounds = await driver.executeScript(() =>
+      document.querySelector("iframe").getBoundingClientRect().toJSON(),
+    );
+
     await driver.switchTo().window(control);
     const started = await driver.executeAsyncScript(function (url) {
       const done = arguments[arguments.length - 1];
       browser.tabs.query({}).then((tabs) => {
         const tab = tabs.find((tab) => tab.url === url);
-        return browser.tabs.sendMessage(tab.id, {
-          type: "START_IMAGE_PICKER",
-          sessionId: "iframe-blob-test",
-        });
+        return browser.tabs.sendMessage(
+          tab.id,
+          { type: "START_SELECTION" },
+          { frameId: 0 },
+        );
       }).then(() => done(true), (error) => done(String(error)));
     }, url);
     assert.equal(started, true);
     await driver.switchTo().window(page);
-    await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
     await driver.wait(async () => driver.executeScript(() =>
-      Boolean(document.querySelector("ocr-translate-ui")?.shadowRoot.querySelector(".ocr-translate-image-picker-overlay")),
+      Boolean(document.querySelector("ocr-translate-ui")?.shadowRoot.querySelector(".ocr-translate-selection-overlay")),
     ), 10_000);
-    await driver.findElement(By.css("#sample")).click();
+    // Firefox hit-tests against the last painted frame.
+    await driver.executeAsyncScript(function () {
+      const done = arguments[arguments.length - 1];
+      requestAnimationFrame(() => requestAnimationFrame(done));
+    });
+    // Region selection covers the page, so the top frame asks the iframe
+    // for the image under the pointer.
+    const point = {
+      x: Math.round(frameBounds.x + imageBounds.x + imageBounds.width / 2),
+      y: Math.round(frameBounds.y + imageBounds.y + imageBounds.height / 2),
+    };
+    await driver.actions().move({ ...point, origin: Origin.VIEWPORT }).perform();
+    await driver.wait(async () => driver.executeScript(() => {
+      const outline = document.querySelector("ocr-translate-ui")?.shadowRoot
+        .querySelector(".ocr-translate-image-picker-frame");
+      return Boolean(outline && !outline.hidden);
+    }), 10_000, "The iframe image should be outlined");
+    await driver.actions().click().perform();
+    await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
     await driver.wait(async () => {
       const text = await driver.executeScript(() =>
         document.querySelector("ocr-translate-ui")?.shadowRoot.querySelector("textarea")?.value,

@@ -105,14 +105,20 @@ export function startRouter(
       }
       return undefined;
     }
-    if (
-      isRuntimeMessage(message, "END_IMAGE_PICKER") &&
-      typeof message.sessionId === "string"
-    ) {
+    if (isRuntimeMessage(message, "FRAME_IMAGE_AT_POINT")) {
       if (typeof tabId === "number") {
-        return browser.tabs.sendMessage(tabId, {
-          type: "CANCEL_IMAGE_PICKER",
-          sessionId: message.sessionId,
+        return browser.tabs.sendMessage(
+          tabId,
+          { ...message, frameId: messageSender?.frameId ?? 0 },
+          { frameId: 0 },
+        );
+      }
+      return undefined;
+    }
+    if (isRuntimeMessage(message, "TRANSLATE_FRAME_IMAGE")) {
+      if (typeof tabId === "number") {
+        return browser.tabs.sendMessage(tabId, message, {
+          frameId: message.frameId,
         });
       }
       return undefined;

@@ -5,8 +5,12 @@
   --border-strong: #d6d1c2;
   --text: #21201c;
   --muted: #6f6a5e;
-  --accent: #3e7bd6;
-  --accent-hover: #326bc0;
+  /* Deep enough for white text, so dark mode keeps it too. */
+  --primary-bg: #2c66ba;
+  --primary-bg-hover: #255aa3;
+  --secondary: #14b8a6;
+  --secondary-text: #0f766e;
+  --secondary-focus-ring: rgba(20, 184, 166, 0.24);
   --focus-ring: rgba(62, 123, 214, 0.24);
   --danger: #b91c1c;
   --danger-bg: #fef2f2;
@@ -22,8 +26,9 @@
     --border-strong: rgba(148, 163, 184, 0.36);
     --text: #e7edf2;
     --muted: #a3adb6;
-    --accent: #5b93e8;
-    --accent-hover: #73a4ed;
+    --secondary: #2dd4bf;
+    --secondary-text: #2dd4bf;
+    --secondary-focus-ring: rgba(45, 212, 191, 0.3);
     --focus-ring: rgba(91, 147, 232, 0.3);
     --danger: #fca5a5;
     --danger-bg: rgba(127, 29, 29, 0.28);
@@ -208,13 +213,6 @@ select:disabled,
   cursor: pointer;
 }
 
-.popup-divider {
-  width: 100%;
-  margin: 4px 0;
-  border: 0;
-  border-top: 1px solid var(--border);
-}
-
 .popup-actions .primary-button {
   flex-direction: column;
   gap: 1px;
@@ -222,8 +220,8 @@ select:disabled,
 }
 
 .primary-button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
+  border: 1px solid var(--primary-bg);
+  background: var(--primary-bg);
   color: #ffffff;
 }
 
@@ -240,19 +238,20 @@ select:disabled,
 }
 
 .secondary-button {
-  border: 1px solid var(--border-strong);
-  background: var(--control-bg);
-  color: var(--text);
+  --focus-ring: var(--secondary-focus-ring);
+  border: 1px solid color-mix(in srgb, var(--secondary) 40%, transparent);
+  background: color-mix(in srgb, var(--secondary) 12%, var(--control-bg));
+  color: var(--secondary-text);
 }
 
 .primary-button:hover:not(:disabled) {
-  border-color: var(--accent-hover);
-  background: var(--accent-hover);
+  border-color: var(--primary-bg-hover);
+  background: var(--primary-bg-hover);
 }
 
 .secondary-button:hover:not(:disabled) {
-  border-color: var(--muted);
-  background: var(--hover-bg);
+  border-color: color-mix(in srgb, var(--secondary) 55%, transparent);
+  background: color-mix(in srgb, var(--secondary) 18%, var(--control-bg));
 }
 
 .popup-actions svg {
@@ -261,7 +260,6 @@ select:disabled,
   height: 17px;
 }
 
-#pick-image svg,
 #live-translate svg {
   width: 18px;
   height: 18px;
@@ -282,7 +280,7 @@ select:disabled,
 }
 
 .secondary-button .shortcut-key {
-  color: var(--muted);
+  color: var(--secondary-text);
 }
 
 .icon-button:focus-visible,

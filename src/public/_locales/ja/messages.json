@@ -6,13 +6,13 @@
     "message": "ローカルOCRを使って、画像やウェブページの選択した範囲から文字を認識し、翻訳します。"
   },
   "commandTranslateScreenRegion": {
-    "message": "範囲を翻訳"
+    "message": "範囲または画像を翻訳"
   },
   "commandTranslateScreenRegionLive": {
     "message": "リアルタイム翻訳"
   },
   "contextTranslateScreenRegion": {
-    "message": "範囲を翻訳…"
+    "message": "範囲または画像を翻訳…"
   },
   "contextTranslateImage": {
     "message": "この画像を翻訳"
@@ -281,9 +281,6 @@
   "popupStartingSelection": {
     "message": "範囲選択を開始中…"
   },
-  "popupStartingImagePicker": {
-    "message": "画像選択を開始中…"
-  },
   "popupSourceLanguage": {
     "message": "翻訳元の言語"
   },
@@ -303,10 +300,7 @@
     "message": "パネル"
   },
   "popupSelectArea": {
-    "message": "範囲を翻訳"
-  },
-  "popupPickImage": {
-    "message": "画像を翻訳"
+    "message": "範囲または画像を翻訳"
   },
   "popupLiveTranslation": {
     "message": "リアルタイム翻訳"
@@ -337,9 +331,6 @@
   },
   "selectionPressKeyToCancel": {
     "message": "$1キーでキャンセル"
-  },
-  "imagePickerSelectImage": {
-    "message": "翻訳する画像をクリック"
   },
   "selectionResize": {
     "message": "選択範囲のサイズを変更"

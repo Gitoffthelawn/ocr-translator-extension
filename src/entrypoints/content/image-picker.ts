@@ -1,151 +1,3 @@
-import { t } from "@/shared/i18n";
-
-let cancelActivePicker: (() => void) | undefined;
-
-export function cancelImagePickerOverlay(): void {
-  cancelActivePicker?.();
-}
-
-export function cleanupImagePickerOnNavigation(
-  isTopFrame: boolean,
-  cancelLocal: () => void,
-  endGlobal: () => void,
-): void {
-  if (isTopFrame) {
-    endGlobal();
-  } else {
-    cancelLocal();
-  }
-}
-
-export function startImagePickerOverlay(
-  container: HTMLElement,
-  options: { showDim?: boolean; showHint?: boolean } = {},
-): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    cancelImagePickerOverlay();
-
-    let currentImage: HTMLImageElement | undefined;
-
-    const overlay = document.createElement("div");
-    overlay.className = "ocr-translate-image-picker-overlay";
-
-    const dim = document.createElement("div");
-    dim.className = "ocr-translate-selection-dim";
-
-    const frame = document.createElement("div");
-    frame.className = "ocr-translate-image-picker-frame";
-
-    const hint = document.createElement("div");
-    hint.className =
-      "ocr-translate-selection-hint ocr-translate-image-picker-hint";
-    hint.append(t("imagePickerSelectImage"), document.createElement("br"));
-
-    const hintSub = document.createElement("span");
-    hintSub.className = "ocr-translate-selection-hint-sub";
-    const keyMarker = "__KEY__";
-    const [beforeKey, afterKey] = t(
-      "selectionPressKeyToCancel",
-      keyMarker,
-    ).split(keyMarker);
-    const key = document.createElement("kbd");
-    key.className = "ocr-translate-selection-hint-kbd";
-    key.textContent = "Esc";
-    hintSub.append(beforeKey ?? "", key, afterKey ?? "");
-    hint.append(hintSub);
-
-    if (options.showDim !== false) {
-      overlay.append(dim);
-    }
-    overlay.append(frame);
-    if (options.showHint !== false) {
-      overlay.append(hint);
-    }
-    container.append(overlay);
-    const root = container.getRootNode();
-    const uiHost = root instanceof ShadowRoot ? root.host : undefined;
-
-    function cleanup(image: HTMLImageElement | null): void {
-      document.removeEventListener("pointermove", onPointerMove, true);
-      document.removeEventListener("click", onClick, true);
-      document.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("scroll", updateFrame, true);
-      window.removeEventListener("resize", updateFrame);
-      cancelActivePicker = undefined;
-      overlay.remove();
-      resolve(image);
-    }
-
-    function imageFromEvent(event: MouseEvent): HTMLImageElement | undefined {
-      return findImageAtPoint(event.clientX, event.clientY, { ignore: uiHost });
-    }
-
-    function onPointerMove(event: PointerEvent): void {
-      const image = imageFromEvent(event);
-      if (image === currentImage) {
-        return;
-      }
-      currentImage = image;
-      updateFrame();
-    }
-
-    function onClick(event: MouseEvent): void {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const image = imageFromEvent(event);
-      if (image) {
-        cleanup(image);
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent): void {
-      if (event.key !== "Escape") {
-        return;
-      }
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      cleanup(null);
-    }
-
-    function updateFrame(): void {
-      if (!currentImage?.isConnected) {
-        currentImage = undefined;
-        frame.hidden = true;
-        dim.classList.remove("is-cutout");
-        dim.removeAttribute("style");
-        return;
-      }
-
-      const rect = currentImage.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        currentImage = undefined;
-        frame.hidden = true;
-        dim.classList.remove("is-cutout");
-        dim.removeAttribute("style");
-        return;
-      }
-
-      frame.hidden = false;
-      frame.style.left = `${rect.x}px`;
-      frame.style.top = `${rect.y}px`;
-      frame.style.width = `${rect.width}px`;
-      frame.style.height = `${rect.height}px`;
-      dim.classList.add("is-cutout");
-      dim.style.left = `${rect.x}px`;
-      dim.style.top = `${rect.y}px`;
-      dim.style.width = `${rect.width}px`;
-      dim.style.height = `${rect.height}px`;
-    }
-
-    cancelActivePicker = () => cleanup(null);
-    document.addEventListener("pointermove", onPointerMove, true);
-    document.addEventListener("click", onClick, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("scroll", updateFrame, true);
-    window.addEventListener("resize", updateFrame);
-  });
-}
-
 // Elements that paint content over whatever is under them.
 const REPLACED_ELEMENTS = new Set([
   "canvas",
@@ -157,7 +9,11 @@ const REPLACED_ELEMENTS = new Set([
   "video",
 ]);
 
-// The topmost image a user can see at a viewport point. Hit testing already
+// Smaller images are icons and the like. A press on one starts an area.
+const MIN_IMAGE_SIZE = 30;
+
+// The topmost image a user can see at a viewport point, or the iframe showing
+// a page there; its own content script looks inside it. Hit testing already
 // skips clipped, hidden, and inert images; this also skips images behind a
 // backdrop or panel, such as the page under a lightbox. Images with
 // pointer-events: none are skipped too: bounds alone can't tell whether they
@@ -165,15 +21,14 @@ const REPLACED_ELEMENTS = new Set([
 export function findImageAtPoint(
   x: number,
   y: number,
-  options: { minSize?: number; ignore?: Element } = {},
-): HTMLImageElement | undefined {
-  const { minSize = 0, ignore } = options;
+  ignore?: Element,
+): HTMLImageElement | HTMLIFrameElement | undefined {
   const stack = elementsAtPoint(document, x, y, ignore);
 
   for (const [index, element] of stack.entries()) {
     if (
-      element instanceof HTMLImageElement &&
-      isSelectableImage(element, minSize) &&
+      (element instanceof HTMLIFrameElement ||
+        (element instanceof HTMLImageElement && isSelectableImage(element))) &&
       !isCovered(element, stack.slice(0, index))
     ) {
       return element;
@@ -204,11 +59,11 @@ export function elementsAtPoint(
 
 // Overlays that stay within the image (captions, badges, transparent click
 // catchers) leave it visible; a painted layer reaching past it hides it.
-function isCovered(image: HTMLImageElement, above: Element[]): boolean {
-  const bounds = image.getBoundingClientRect();
+function isCovered(target: Element, above: Element[]): boolean {
+  const bounds = target.getBoundingClientRect();
   return above.some(
     (element) =>
-      !element.contains(image) &&
+      !element.contains(target) &&
       !isWithin(element.getBoundingClientRect(), bounds) &&
       paints(element),
   );
@@ -243,15 +98,10 @@ function isTransparent(color: string): boolean {
   );
 }
 
-function isSelectableImage(image: HTMLImageElement, minSize = 0): boolean {
+function isSelectableImage(image: HTMLImageElement): boolean {
   if (!image.currentSrc && !image.src) {
     return false;
   }
   const rect = image.getBoundingClientRect();
-  return (
-    rect.width > 0 &&
-    rect.height > 0 &&
-    rect.width >= minSize &&
-    rect.height >= minSize
-  );
+  return rect.width >= MIN_IMAGE_SIZE && rect.height >= MIN_IMAGE_SIZE;
 }

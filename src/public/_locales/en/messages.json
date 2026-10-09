@@ -8,13 +8,13 @@
     "description": "Extension description"
   },
   "commandTranslateScreenRegion": {
-    "message": "Translate an area"
+    "message": "Translate area or image"
   },
   "commandTranslateScreenRegionLive": {
     "message": "Live translation"
   },
   "contextTranslateScreenRegion": {
-    "message": "Translate an area…"
+    "message": "Translate area or image…"
   },
   "contextTranslateImage": {
     "message": "Translate this image"
@@ -316,9 +316,6 @@
   "popupStartingSelection": {
     "message": "Starting selection…"
   },
-  "popupStartingImagePicker": {
-    "message": "Starting image picker…"
-  },
   "popupSourceLanguage": {
     "message": "Source language",
     "description": "Language of the text in the image, used for OCR."
@@ -342,11 +339,7 @@
     "description": "Display results in a panel in the bottom-right corner."
   },
   "popupSelectArea": {
-    "message": "Translate an area"
-  },
-  "popupPickImage": {
-    "message": "Translate an image",
-    "description": "Choose an image on the current web page to recognize and translate."
+    "message": "Translate area or image"
   },
   "popupLiveTranslation": {
     "message": "Live translation",
@@ -381,9 +374,6 @@
   "selectionPressKeyToCancel": {
     "message": "Press $1 to cancel",
     "description": "$1 is the keyboard key used to cancel selection."
-  },
-  "imagePickerSelectImage": {
-    "message": "Click an image to translate"
   },
   "selectionResize": {
     "message": "Resize selection"

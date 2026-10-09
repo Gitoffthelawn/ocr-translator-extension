@@ -270,7 +270,7 @@ describe("background router", () => {
     );
   });
 
-  it("cancels a finished image picker session in every frame", async () => {
+  it("sends an iframe's image to the top frame with the iframe's ID", async () => {
     let listener: MessageListener | undefined;
     const sendMessage = vi.fn(async () => undefined);
     vi.stubGlobal("browser", {
@@ -283,18 +283,48 @@ describe("background router", () => {
       },
       tabs: { sendMessage },
     });
+    const image = {
+      rect: { x: 10, y: 20, width: 100, height: 80 },
+      point: { x: 5, y: 6 },
+    };
 
     startRouter({} as RouterDependencies);
     await invoke(
       listener,
-      { type: "END_IMAGE_PICKER", sessionId: "picker-1" },
+      { type: "FRAME_IMAGE_AT_POINT", probeId: 3, image },
       { tab: { id: 7 }, frameId: 4 },
     );
 
-    expect(sendMessage).toHaveBeenCalledWith(7, {
-      type: "CANCEL_IMAGE_PICKER",
-      sessionId: "picker-1",
+    expect(sendMessage).toHaveBeenCalledWith(
+      7,
+      { type: "FRAME_IMAGE_AT_POINT", probeId: 3, frameId: 4, image },
+      { frameId: 0 },
+    );
+  });
+
+  it("asks the iframe that found an image to translate it", async () => {
+    let listener: MessageListener | undefined;
+    const sendMessage = vi.fn(async () => undefined);
+    vi.stubGlobal("browser", {
+      runtime: {
+        onMessage: {
+          addListener: vi.fn((next: MessageListener) => {
+            listener = next;
+          }),
+        },
+      },
+      tabs: { sendMessage },
     });
+    const message = {
+      type: "TRANSLATE_FRAME_IMAGE",
+      frameId: 4,
+      point: { x: 5, y: 6 },
+    };
+
+    startRouter({} as RouterDependencies);
+    await invoke(listener, message, { tab: { id: 7 }, frameId: 0 });
+
+    expect(sendMessage).toHaveBeenCalledWith(7, message, { frameId: 4 });
   });
 
   it("invalidates the previous capture before reading settings", async () => {

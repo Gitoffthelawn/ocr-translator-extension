@@ -7,10 +7,11 @@ import { transformWithOxc } from "vite";
 const contentDir = new URL("../../../src/entrypoints/content/", import.meta.url);
 const modalSource = await readFile(new URL("modal-ui.ts", contentDir), "utf8");
 const pickerSource = await readFile(new URL("image-picker.ts", contentDir), "utf8");
+const frameSource = await readFile(new URL("frame-images.ts", contentDir), "utf8");
 const selectionSource = await readFile(new URL("selection-overlay.ts", contentDir), "utf8");
 const css = await readFile(new URL("style.css", contentDir), "utf8");
 const { code } = await transformWithOxc(
-  ["const t = (key: string) => key;", modalSource, pickerSource, selectionSource]
+  ["const t = (key: string) => key;", modalSource, pickerSource, frameSource, selectionSource]
     .join("\n")
     .replace(/^import .*;\n/gm, ""),
   "modal-ui.ts",

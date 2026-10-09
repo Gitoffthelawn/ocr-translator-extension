@@ -6,13 +6,13 @@
     "message": "Распознавайте и переводите текст на изображениях или в любой части веб-страницы."
   },
   "commandTranslateScreenRegion": {
-    "message": "Перевести область"
+    "message": "Перевести область/изображение"
   },
   "commandTranslateScreenRegionLive": {
     "message": "Перевод в реальном времени"
   },
   "contextTranslateScreenRegion": {
-    "message": "Перевести область…"
+    "message": "Перевести область/изображение…"
   },
   "contextTranslateImage": {
     "message": "Перевести это изображение"
@@ -281,9 +281,6 @@
   "popupStartingSelection": {
     "message": "Запускаем выбор…"
   },
-  "popupStartingImagePicker": {
-    "message": "Запускаем выбор изображения…"
-  },
   "popupSourceLanguage": {
     "message": "Язык оригинала"
   },
@@ -303,10 +300,7 @@
     "message": "Панель"
   },
   "popupSelectArea": {
-    "message": "Перевести область"
-  },
-  "popupPickImage": {
-    "message": "Перевести изображение"
+    "message": "Перевести область/изображение"
   },
   "popupLiveTranslation": {
     "message": "Перевод в реальном времени"
@@ -337,9 +331,6 @@
   },
   "selectionPressKeyToCancel": {
     "message": "Нажмите $1 для отмены"
-  },
-  "imagePickerSelectImage": {
-    "message": "Нажмите на изображение, чтобы перевести"
   },
   "selectionResize": {
     "message": "Изменить размер выделения"

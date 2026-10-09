@@ -33,7 +33,7 @@ Open the extension from the toolbar or context menu, or press `Ctrl+Shift+F`. Dr
 
 To move or resize the area before recognition starts, enable **Adjust selection before recognition** in the extension settings.
 
-You can also right-click an image and choose "Translate this image". If clicking doesn't pick an image, for example one inside an embedded frame, use **Translate an image** from the extension popup.
+You can also right-click an image and choose "Translate this image".
 
 In the overlay view, press `Shift` to switch between the translation and the original.
 

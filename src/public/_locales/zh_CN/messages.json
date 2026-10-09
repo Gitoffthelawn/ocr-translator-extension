@@ -6,13 +6,13 @@
     "message": "使用本地 OCR 识别并翻译图片或网页所选区域中的文字。"
   },
   "commandTranslateScreenRegion": {
-    "message": "翻译区域"
+    "message": "翻译区域或图片"
   },
   "commandTranslateScreenRegionLive": {
     "message": "实时翻译"
   },
   "contextTranslateScreenRegion": {
-    "message": "翻译区域…"
+    "message": "翻译区域或图片…"
   },
   "contextTranslateImage": {
     "message": "翻译此图片"
@@ -281,9 +281,6 @@
   "popupStartingSelection": {
     "message": "正在开始选择…"
   },
-  "popupStartingImagePicker": {
-    "message": "正在启动图片选择器…"
-  },
   "popupSourceLanguage": {
     "message": "源语言"
   },
@@ -303,10 +300,7 @@
     "message": "面板"
   },
   "popupSelectArea": {
-    "message": "翻译区域"
-  },
-  "popupPickImage": {
-    "message": "翻译图片"
+    "message": "翻译区域或图片"
   },
   "popupLiveTranslation": {
     "message": "实时翻译"
@@ -337,9 +331,6 @@
   },
   "selectionPressKeyToCancel": {
     "message": "按 $1 键取消"
-  },
-  "imagePickerSelectImage": {
-    "message": "点击要翻译的图片"
   },
   "selectionResize": {
     "message": "调整所选区域大小"
