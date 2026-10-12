@@ -1185,6 +1185,24 @@ describe("background router", () => {
       expect(captureLiveFrame).not.toHaveBeenCalled();
     });
 
+    it("reads a frame taken from a video without capturing the screen", async () => {
+      const { send, recognize, captureLiveFrame } = startLiveRouter();
+
+      await expect(
+        send(
+          {
+            type: "LIVE_IMAGE_REQUEST",
+            requestId: "image-1",
+            sessionId: "session-1",
+            image: { data: btoa("frame"), mediaType: "image/png" },
+          },
+          tab,
+        ),
+      ).resolves.toEqual({ text: "Hello there" });
+      expect(recognize).toHaveBeenCalledOnce();
+      expect(captureLiveFrame).not.toHaveBeenCalled();
+    });
+
     it("translates a line without capturing anything", async () => {
       const { send, captureLiveFrame } = startLiveRouter();
 

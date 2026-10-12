@@ -404,6 +404,9 @@
   "liveTextSize": {
     "message": "Размер текста"
   },
+  "livePanelCoversRegion": {
+    "message": "Видео не найдено. Используется захват экрана. Переместите панель за пределы области захвата."
+  },
   "overlayMoveToolbar": {
     "message": "Переместить тулбар"
   },

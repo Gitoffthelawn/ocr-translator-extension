@@ -404,6 +404,9 @@
   "liveTextSize": {
     "message": "文字サイズ"
   },
+  "livePanelCoversRegion": {
+    "message": "動画が見つかりません。画面キャプチャを使用しています。パネルをキャプチャ範囲の外に移動してください。"
+  },
   "overlayMoveToolbar": {
     "message": "ツールバーを移動"
   },

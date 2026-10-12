@@ -5,15 +5,17 @@ import type { RuntimeMessage } from "../shared/messages";
 import { defaultSettings } from "../shared/storage";
 import type { OcrBlock, Settings } from "../shared/types";
 import type { LiveFrame } from "./capture";
-import { createFrameSignature } from "./frame-signature";
+import { createFrameSignature } from "../shared/frame-signature";
 import {
-  createLiveSessions,
   handleLiveFrameRequest,
+  handleLiveImageRequest,
   handleLiveTranslateRequest,
   type LiveDependencies,
+  type LiveSessions,
 } from "./live";
 
 type FrameMessage = Extract<RuntimeMessage, { type: "LIVE_FRAME_REQUEST" }>;
+type ImageMessage = Extract<RuntimeMessage, { type: "LIVE_IMAGE_REQUEST" }>;
 
 function frameOf(brightness: number, pixelRatio = 1): LiveFrame {
   const width = 40;
@@ -39,6 +41,16 @@ function frameMessage(overrides: Partial<FrameMessage> = {}): FrameMessage {
     sessionId: "session-1",
     rect: { x: 10, y: 20, width: 400, height: 60 },
     viewport: { width: 1280, height: 720 },
+    ...overrides,
+  };
+}
+
+function imageMessage(overrides: Partial<ImageMessage> = {}): ImageMessage {
+  return {
+    type: "LIVE_IMAGE_REQUEST",
+    requestId: "request-1",
+    sessionId: "session-1",
+    image: { data: btoa("frame"), mediaType: "image/png" },
     ...overrides,
   };
 }
@@ -71,7 +83,8 @@ function setup(options: {
     createTranslationProvider: () => ({ id: "fake", translate }),
     detectLanguage: vi.fn(async () => undefined),
   };
-  return { dependencies, recognize, translate, set, sessions: createLiveSessions() };
+  const sessions: LiveSessions = new Map();
+  return { dependencies, recognize, translate, set, sessions };
 }
 
 const signal = () => new AbortController().signal;
@@ -103,7 +116,7 @@ describe("handleLiveFrameRequest", () => {
 
     await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
     await handleLiveFrameRequest(dependencies, sessions, frameMessage({ sessionId: "other" }), visibleTab, signal());
-    sessions.end("session-1");
+    sessions.delete("session-1");
     await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
 
     expect(recognize.mock.calls.map(([input]) => input.modelId)).toEqual([
@@ -463,7 +476,7 @@ describe("handleLiveFrameRequest", () => {
     });
 
     await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
-    sessions.end("session-1");
+    sessions.delete("session-1");
     await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
 
     expect(recognize).toHaveBeenCalledTimes(2);
@@ -494,6 +507,91 @@ describe("handleLiveFrameRequest", () => {
       expect.objectContaining({ sourceLang: "ja" }),
       expect.anything(),
     );
+  });
+});
+
+describe("handleLiveImageRequest", () => {
+  it("reads the image it was sent as a single block", async () => {
+    const { dependencies, recognize, sessions } = setup({});
+
+    const response = await handleLiveImageRequest(
+      dependencies,
+      sessions,
+      imageMessage(),
+      signal(),
+    );
+
+    expect(response).toEqual({ text: "Hello there" });
+    expect(dependencies.captureLiveFrame).not.toHaveBeenCalled();
+    const [input] = recognize.mock.calls[0];
+    expect(input).toMatchObject({ sourceLang: "auto", grouping: "single" });
+    await expect((input.image as Blob).text()).resolves.toBe("frame");
+  });
+
+  it("skips lines thinner than asked for, and never reads below the floor", async () => {
+    const { dependencies, recognize, sessions } = setup({});
+
+    for (const minLineThickness of [undefined, 10, 40]) {
+      await handleLiveImageRequest(
+        dependencies,
+        sessions,
+        imageMessage({ minLineThickness }),
+        signal(),
+      );
+    }
+
+    expect(recognize.mock.calls.map(([input]) => input.minLineThickness)).toEqual([
+      18, 18, 40,
+    ]);
+  });
+
+  it("reports the thickest line it read, in pixels of the image", async () => {
+    const { dependencies, sessions } = setup({
+      texts: ["Good morning. Goodbye."],
+      blocks: [[lineOf("Good morning.", 48), lineOf("Goodbye.", 30)]],
+    });
+
+    await expect(
+      handleLiveImageRequest(dependencies, sessions, imageMessage(), signal()),
+    ).resolves.toEqual({ text: "Good morning. Goodbye.", lineThickness: 48 });
+  });
+
+  it("keeps the first detected model for the session", async () => {
+    const { dependencies, recognize, sessions } = setup({});
+    recognize
+      .mockResolvedValueOnce({ text: "", providerMeta: { modelId: "v6-multi" } })
+      .mockResolvedValueOnce({ text: "Hello", providerMeta: { modelId: "v6-cyrillic" } })
+      .mockResolvedValueOnce({ text: "Hi", providerMeta: { modelId: "v6-multi" } });
+
+    for (let read = 0; read < 3; read += 1) {
+      await handleLiveImageRequest(dependencies, sessions, imageMessage(), signal());
+    }
+    // A session that falls back to the screen keeps the same model.
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+
+    expect(recognize.mock.calls.map(([input]) => input.modelId)).toEqual([
+      undefined, undefined, "v6-cyrillic", "v6-cyrillic",
+    ]);
+  });
+
+  it("does not stand in for the last screen capture", async () => {
+    const { dependencies, recognize, sessions } = setup({
+      frames: [frameOf(10), frameOf(10)],
+      texts: ["Screen text", "Video text"],
+    });
+
+    await handleLiveFrameRequest(dependencies, sessions, frameMessage(), visibleTab, signal());
+    await handleLiveImageRequest(dependencies, sessions, imageMessage(), signal());
+    const screen = await handleLiveFrameRequest(
+      dependencies,
+      sessions,
+      frameMessage(),
+      visibleTab,
+      signal(),
+    );
+
+    expect(screen).toEqual({ status: "ok", text: "Screen text", unchanged: true });
+    expect(recognize).toHaveBeenCalledTimes(2);
   });
 });
 

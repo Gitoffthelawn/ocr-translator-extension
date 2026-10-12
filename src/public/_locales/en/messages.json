@@ -464,6 +464,10 @@
     "message": "Text size",
     "description": "Button in the live translation panel that opens the text size controls."
   },
+  "livePanelCoversRegion": {
+    "message": "No video detected. Using screenshot capture. Move the panel outside the capture area.",
+    "description": "Shown in the live translation panel while it covers part of a selected area that is read from screenshots. That part cannot be read."
+  },
   "overlayMoveToolbar": {
     "message": "Move toolbar"
   },

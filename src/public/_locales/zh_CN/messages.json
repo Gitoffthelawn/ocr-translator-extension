@@ -404,6 +404,9 @@
   "liveTextSize": {
     "message": "文字大小"
   },
+  "livePanelCoversRegion": {
+    "message": "未检测到视频，正在使用屏幕截图。请将面板移出截图区域。"
+  },
   "overlayMoveToolbar": {
     "message": "移动工具栏"
   },

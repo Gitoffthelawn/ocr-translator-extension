@@ -56,7 +56,7 @@ Live translation can be used for text that keeps changing on screen, such as har
 Tips:
 
 - Select the area around the subtitles while they are on screen. It learns the subtitle size from the first lines it reads and ignores much smaller text, such as player controls or small background text.
-- The area follows the video when you scroll, zoom, or go full screen.
+- The area is read directly from the video when possible; and from a screenshot otherwise. When reading from a screenshot, the panel should not obscure the captured area.
 - When an LLM endpoint is used, the previous few lines are sent as context for better translation.
 - DRM-protected videos may not work.
 

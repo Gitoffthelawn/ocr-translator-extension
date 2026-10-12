@@ -6,6 +6,9 @@ export interface LiveRegion {
   /** Where the region is now, in viewport coordinates. Measures it again, so
    * a move that came without an event still counts. */
   measure(): Rect;
+  /** The picture the region is over, and the region as shares of where the
+   * picture is drawn. Absent when the region is not over a picture. */
+  picture?: { element: HTMLElement; share: Rect };
   dispose(): void;
 }
 
@@ -82,6 +85,7 @@ export function followRegion(
 
   return {
     measure,
+    picture: { element: picture, share },
     dispose() {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);

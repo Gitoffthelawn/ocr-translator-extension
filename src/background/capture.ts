@@ -9,7 +9,7 @@ import { t } from "../shared/i18n";
 import { fetchWithModifiedHeaders } from "../shared/fetch-with-modified-headers";
 import type { Rect, Viewport } from "../shared/types";
 import { createThrottle } from "./capture-throttle";
-import { createFrameSignature, type FrameSignature } from "./frame-signature";
+import { createFrameSignature, type FrameSignature } from "../shared/frame-signature";
 
 export async function loadImage(url: string, pageUrl?: string): Promise<Blob> {
   // Image hosts such as pixiv reject extension requests without the page Referer.

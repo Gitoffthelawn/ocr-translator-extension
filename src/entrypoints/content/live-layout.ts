@@ -18,19 +18,19 @@ export const PANEL_GAP = 12;
 export const PANEL_MARGIN = 8;
 export const PANEL_WIDTH = 480;
 export const PANEL_HEIGHT = 180;
-// The smallest the panel gets beside a region or when resized: room for the
-// title bar's buttons and languages, and one line of text.
+// The smallest the panel gets above or below a region, or when resized: room
+// for the title bar's buttons and languages, and one line of text.
 export const PANEL_MIN_WIDTH = 250;
 export const PANEL_MIN_HEIGHT = 96;
 
 /**
- * Put the panel beside the region without covering it, trying below, above,
- * then right and left. The panel must stay off the region because the screen
- * is what gets read, and it would otherwise read its own text back.
+ * Put the panel below the region without covering it, or above when there is
+ * no room below. The panel must stay off the region because the screen is what
+ * gets read, and it would otherwise read its own text back.
  *
- * With no room anywhere (a region that fills the viewport) the panel goes to
- * the top of the viewport, away from where subtitles usually are, and the
- * caller masks the overlap.
+ * With no room above or below (a region about as tall as the viewport) the
+ * panel goes to the top of the viewport, away from where subtitles usually
+ * are, and the caller masks the overlap.
  */
 export function placeLivePanel(
   region: Rect,
@@ -50,7 +50,6 @@ export function placeLivePanel(
     viewport.width - width - PANEL_MARGIN,
   );
 
-  const regionRight = region.x + region.width;
   const regionBottom = region.y + region.height;
 
   const roomBelow = viewport.height - (regionBottom + PANEL_GAP) - PANEL_MARGIN;
@@ -71,34 +70,6 @@ export function placeLivePanel(
       top: region.y - PANEL_GAP - aboveHeight,
       width,
       height: aboveHeight,
-    };
-  }
-
-  // Beside the region, level with its top as far as the viewport allows.
-  const top = clamp(
-    region.y,
-    PANEL_MARGIN,
-    viewport.height - height - PANEL_MARGIN,
-  );
-
-  const roomRight = viewport.width - (regionRight + PANEL_GAP) - PANEL_MARGIN;
-  if (roomRight >= PANEL_MIN_WIDTH) {
-    return {
-      left: regionRight + PANEL_GAP,
-      top,
-      width: Math.min(width, roomRight),
-      height,
-    };
-  }
-
-  const roomLeft = region.x - PANEL_GAP - PANEL_MARGIN;
-  if (roomLeft >= PANEL_MIN_WIDTH) {
-    const leftWidth = Math.min(width, roomLeft);
-    return {
-      left: region.x - PANEL_GAP - leftWidth,
-      top,
-      width: leftWidth,
-      height,
     };
   }
 
@@ -130,6 +101,55 @@ export function clampPanelBox(box: PanelBox, viewport: ViewportSize): PanelBox {
     width,
     height,
   };
+}
+
+/**
+ * Where the user put the panel, kept by the region. The page moves and resizes
+ * the region as it scrolls, zooms and goes full screen, and the panel stays in
+ * the same place by it, at the size the user gave it.
+ */
+export interface PanelAnchor {
+  x: AxisAnchor;
+  y: AxisAnchor;
+  width: number;
+  height: number;
+}
+
+/** The middle of the panel along one axis. Over the region it is a share of
+ * the region, so a panel over the subtitles stays over them as the region
+ * grows. Past an edge it keeps its distance from that edge. */
+interface AxisAnchor {
+  /** Of the region's size, from its start. Between 0 and 1. */
+  share: number;
+  /** In pixels, past the point that `share` marks. */
+  offset: number;
+}
+
+export function anchorPanel(box: PanelBox, region: Rect): PanelAnchor {
+  return {
+    x: anchorAxis(box.left + box.width / 2, region.x, region.width),
+    y: anchorAxis(box.top + box.height / 2, region.y, region.height),
+    width: box.width,
+    height: box.height,
+  };
+}
+
+export function placeAnchoredPanel(anchor: PanelAnchor, region: Rect): PanelBox {
+  return {
+    left: placeAxis(anchor.x, region.x, region.width) - anchor.width / 2,
+    top: placeAxis(anchor.y, region.y, region.height) - anchor.height / 2,
+    width: anchor.width,
+    height: anchor.height,
+  };
+}
+
+function anchorAxis(middle: number, start: number, size: number): AxisAnchor {
+  const share = clamp((middle - start) / size, 0, 1);
+  return { share, offset: middle - (start + share * size) };
+}
+
+function placeAxis({ share, offset }: AxisAnchor, start: number, size: number): number {
+  return start + share * size + offset;
 }
 
 export type ResizeEdge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";

@@ -148,6 +148,18 @@ export type RuntimeMessage =
        * Absent until the session has learned how thick its text is. */
       minLineThickness?: number;
     }
+  // Content -> background: read the text in a live region the content script
+  // took from a video's own frame. The extension's panel is never in it, so
+  // nothing is masked. The response resolves to a LiveImageResponse.
+  | {
+      type: "LIVE_IMAGE_REQUEST";
+      requestId: string;
+      sessionId: string;
+      image: EncodedImage;
+      /** Lines thinner than this, in pixels of `image`, are not read. Absent
+       * until the session has learned how thick its text is. */
+      minLineThickness?: number;
+    }
   // Content -> background: translate text the live loop read. `context` holds
   // the lines shown just before it, so a sentence split over several subtitles
   // can be translated as one. Unlike RETRANSLATE_REQUEST it leaves the saved
@@ -158,7 +170,8 @@ export type RuntimeMessage =
       text: string;
       context: string[];
     }
-  // Content -> background: live translation ended; forget its last frame.
+  // Content -> background: live translation ended; forget its last frame and
+  // model.
   | {
       type: "LIVE_STOP";
       sessionId: string;
@@ -202,6 +215,14 @@ export type LiveFrameResponse =
        * the first read with text, which is never an unchanged one. */
       lineThickness?: number;
     };
+
+export interface LiveImageResponse {
+  /** Empty when the image holds no readable text. */
+  text: string;
+  /** The thickest line in `text`, in pixels of the image. Absent when `text`
+   * is empty. */
+  lineThickness?: number;
+}
 
 export type LiveTranslationResponse = Pick<
   PipelineResult,

@@ -72,6 +72,7 @@
   /* Status */
   --ocr-danger: #dc2626;
   --ocr-danger-tint: rgba(220, 38, 38, 0.08);
+  --ocr-warning: #b45309;
   --ocr-success: #16a34a;
   --ocr-badge-ink: #b67852;
   --ocr-badge-bg: #fcf7f3;
@@ -167,6 +168,7 @@
 
     --ocr-danger: #f87171;
     --ocr-danger-tint: rgba(248, 113, 113, 0.12);
+    --ocr-warning: #fb923c;
     --ocr-success: #4ade80;
     --ocr-badge-ink: #c6a080;
     --ocr-badge-bg: rgba(198, 160, 128, 0.08);
@@ -2136,6 +2138,34 @@
 .ocr-translate-live-line-note.is-error,
 .ocr-translate-live-note.is-error {
   color: var(--ocr-danger);
+}
+
+.ocr-translate-live-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--ocr-warning);
+  font-size: var(--ocr-size-xs);
+  line-height: var(--ocr-leading-ui);
+  text-wrap: pretty;
+}
+
+.ocr-translate-live-warning[hidden] {
+  display: none;
+}
+
+/* Centred on the first line of text. */
+.ocr-translate-live-warning-icon {
+  display: inline-flex;
+  flex: none;
+  height: calc(var(--ocr-size-xs) * var(--ocr-leading-ui));
+  align-items: center;
+}
+
+.ocr-translate-live-warning-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .ocr-translate-live-retry {

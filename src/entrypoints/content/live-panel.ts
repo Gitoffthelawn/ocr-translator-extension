@@ -9,13 +9,17 @@ import {
   PLAY_ICON,
   SELECT_REGION_ICON,
   TEXT_SIZE_ICON,
+  WARNING_ICON,
 } from "./icons";
 import {
+  anchorPanel,
   clampPanelBox,
   growRect,
+  placeAnchoredPanel,
   placeLivePanel,
   rectsOverlap,
   resizePanelBox,
+  type PanelAnchor,
   type ResizeEdge,
   type PanelBox,
   type ViewportSize,
@@ -36,13 +40,16 @@ export interface LivePanelCallbacks {
 
 export interface LivePanel {
   render(state: LiveState): void;
-  /** Draws the frame where the region is now. The panel goes along unless the
-   * user has placed it. */
+  /** Draws the frame where the region is now. The panel goes along, in the
+   * place by the region where the user put it, if they did. */
   moveRegion(region: Rect): void;
   /** Where the panel covers the region, in viewport coordinates, or nothing
    * when it does not. The live loop blanks this before reading so the panel's
    * own text is not read back. */
   getMask(): Rect | undefined;
+  /** Whether the region is read from screenshots. The panel then warns while
+   * it covers the region, since what it covers is not read. */
+  setReadsScreen(readsScreen: boolean): void;
   dispose(): void;
 }
 
@@ -81,11 +88,12 @@ export function showLivePanel(
   let region = initialRegion;
   let showOriginal = false;
   let textScale = initialTextScale;
+  let readsScreen = true;
   // One view per line in `state.lines`, in the same order.
   const views: LineView[] = [];
-  // Where the user moved or resized the panel to. Until then it follows the
-  // region.
-  let placed: PanelBox | undefined;
+  // Where the user moved or resized the panel to. Until then it goes beside
+  // the region.
+  let placed: PanelAnchor | undefined;
 
   const frame = document.createElement("div");
   frame.className = "ocr-translate-live-region";
@@ -207,11 +215,19 @@ export function showLivePanel(
     updateLatestButton();
   });
 
+  const coverWarning = document.createElement("p");
+  coverWarning.className = "ocr-translate-live-warning";
+  coverWarning.hidden = true;
+  const warningIcon = document.createElement("span");
+  warningIcon.className = "ocr-translate-live-warning-icon";
+  warningIcon.innerHTML = WARNING_ICON;
+  coverWarning.append(warningIcon, t("livePanelCoversRegion"));
+
   // The status stays in view while the lines scroll.
   const footer = document.createElement("div");
   footer.className = "ocr-translate-live-footer";
   footer.setAttribute("aria-live", "polite");
-  footer.append(note, retry, latestButton);
+  footer.append(note, coverWarning, retry, latestButton);
 
   const resizeHandles = RESIZE_EDGES.map((edge) => {
     const handle = document.createElement("div");
@@ -319,13 +335,40 @@ export function showLivePanel(
     // A window that shrinks squeezes the panel only for as long as it is
     // small. A region that scrolls out of view leaves the panel at the edge.
     const box = clampPanelBox(
-      placed ?? placeLivePanel(region, viewport()),
+      placed
+        ? placeAnchoredPanel(placed, region)
+        : placeLivePanel(region, viewport()),
       viewport(),
     );
     panel.style.left = `${box.left}px`;
     panel.style.top = `${box.top}px`;
     panel.style.width = `${box.width}px`;
     panel.style.height = `${box.height}px`;
+    drawCoverWarning();
+  }
+
+  function mask(): Rect | undefined {
+    const box = panel.getBoundingClientRect();
+    const covered = growRect(
+      { x: box.left, y: box.top, width: box.width, height: box.height },
+      MASK_PADDING,
+    );
+    return rectsOverlap(covered, region) ? covered : undefined;
+  }
+
+  function drawCoverWarning(): void {
+    const hidden = !readsScreen || !mask();
+    if (coverWarning.hidden !== hidden) {
+      coverWarning.hidden = hidden;
+      drawFooter();
+    }
+  }
+
+  function drawFooter(): void {
+    footer.classList.toggle(
+      "is-empty",
+      Boolean(!note.textContent && retry.hidden && coverWarning.hidden),
+    );
   }
 
   /** Lets the pointer that goes down on `handle` change the panel's box, as
@@ -366,9 +409,12 @@ export function showLivePanel(
       if (!gesture || event.pointerId !== gesture.pointerId) {
         return;
       }
-      placed = clampPanelBox(
-        change(gesture.start, event.clientX - gesture.x, event.clientY - gesture.y),
-        viewport(),
+      placed = anchorPanel(
+        clampPanelBox(
+          change(gesture.start, event.clientX - gesture.x, event.clientY - gesture.y),
+          viewport(),
+        ),
+        region,
       );
       keepingScroll(position);
     });
@@ -431,7 +477,7 @@ export function showLivePanel(
     note.textContent = message.text;
     note.classList.toggle("is-error", message.isError);
     retry.hidden = status !== "error";
-    footer.classList.toggle("is-empty", !message.text && retry.hidden);
+    drawFooter();
   }
 
   // "EN → UK", with the names in the tooltip. Before the first translation
@@ -493,13 +539,13 @@ export function showLivePanel(
       keepingScroll(position);
     },
 
-    getMask() {
-      const box = panel.getBoundingClientRect();
-      const covered = growRect(
-        { x: box.left, y: box.top, width: box.width, height: box.height },
-        MASK_PADDING,
-      );
-      return rectsOverlap(covered, region) ? covered : undefined;
+    getMask: mask,
+
+    setReadsScreen(next) {
+      if (readsScreen !== next) {
+        readsScreen = next;
+        keepingScroll(drawCoverWarning);
+      }
     },
 
     dispose() {

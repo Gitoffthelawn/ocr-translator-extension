@@ -6,6 +6,7 @@ import {
 import type {
   CaptureSnapshotResponse,
   LiveFrameResponse,
+  LiveImageResponse,
   LiveTranslationResponse,
   OcrImageSource,
   OcrSourceLanguagesResponse,
@@ -72,6 +73,8 @@ import { closeRegionOutline, showRegionOutline } from "./region-outline";
 import { LiveSession } from "./live-session";
 import { showLivePanel, type LivePanel } from "./live-panel";
 import { followRegion } from "./live-region";
+import { rectsOverlap } from "./live-layout";
+import { readFromVideo } from "./live-video";
 import {
   setNavigationContext,
   startNavigationWatch,
@@ -484,18 +487,47 @@ function startLive(rect: Rect, textScale: LiveTextScale): void {
     shadow instanceof ShadowRoot ? shadow.host : undefined,
     (moved) => panel.moveRegion(moved),
   );
+  const viewport = () => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  // A video is read from its own frames, which the panel is never in. Anything
+  // else, or a video the page keeps from the extension, is read off the screen.
+  const video =
+    region.picture?.element instanceof HTMLVideoElement
+      ? readFromVideo(region.picture.element, region.picture.share, {
+          isInView: () =>
+            rectsOverlap(region.measure(), { x: 0, y: 0, ...viewport() }),
+          recognize: (requestId, image, minLineThickness) =>
+            sendRequest<LiveImageResponse>({
+              type: "LIVE_IMAGE_REQUEST",
+              requestId,
+              sessionId,
+              image,
+              minLineThickness,
+            }),
+          onWake: () => session.wake(),
+        })
+      : undefined;
+  panel.setReadsScreen(!video);
   const session = new LiveSession({
-    readFrame: (requestId, minLineThickness) =>
-      sendRequest<LiveFrameResponse>({
-        type: "LIVE_FRAME_REQUEST",
-        requestId,
-        sessionId,
-        // Measured first, so the mask below is taken with the panel moved.
-        rect: region.measure(),
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-        mask: panel.getMask(),
-        minLineThickness,
-      }),
+    readFrame: async (requestId, minLineThickness) => {
+      const read = await video?.read(requestId, minLineThickness);
+      panel.setReadsScreen(!read);
+      return (
+        read ??
+        sendRequest<LiveFrameResponse>({
+          type: "LIVE_FRAME_REQUEST",
+          requestId,
+          sessionId,
+          // Measured first, so the mask below is taken with the panel moved.
+          rect: region.measure(),
+          viewport: viewport(),
+          mask: panel.getMask(),
+          minLineThickness,
+        })
+      );
+    },
     translate: (requestId, text, context) =>
       sendRequest<LiveTranslationResponse>({
         type: "LIVE_TRANSLATE_REQUEST",
@@ -527,6 +559,7 @@ function startLive(rect: Rect, textScale: LiveTextScale): void {
     sessionId,
     stopWatching: () => {
       document.removeEventListener("visibilitychange", wakeWhenVisible);
+      video?.dispose();
       region.dispose();
     },
   };

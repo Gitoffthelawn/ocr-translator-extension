@@ -4,7 +4,7 @@ Live translation reads a screen area over and over and shows the translation of 
 
 ```text
 every ~600 ms:
-  capture the area from a tab screenshot
+  take the area from the video's current frame, or from a tab screenshot
   -> skip if the frame looks the same as the last read
   -> recognize text with PP-OCR (one block, no layout model)
   -> match it to the line on screen
@@ -13,42 +13,26 @@ every ~600 ms:
 
 Reading and translating run side by side. A slow translator never blocks the next read.
 
+For usage and LLM setup, see [Live translation in the README](../README.md#live-translation).
+
 ## Capture
 
-- The area is cropped from a `tabs.captureVisibleTab` screenshot, so it works on any page element, including video.
-- Chrome limits screenshots to two per second, so reads start at least 600 ms apart. Firefox uses the same spacing. If OCR takes longer, the next read starts as soon as it ends.
-- Nothing is read while the tab is in the background or the area is scrolled out of view.
-- The panel sits beside the area. If it has to overlap, that part is painted grey first, so the panel does not read its own text.
-- If the area is over a video or another picture (image, canvas, iframe), it follows the picture when the page scrolls, zooms, or goes full screen.
+The area is read from the video itself when possible, and from a screenshot otherwise.
 
-## Filtering reads
+- **Video:** crops the video's own frame. The panel can cover the area without affecting OCR. Only text in the video picture is captured; captions drawn as page elements are excluded.
+- **Screenshot:** uses `tabs.captureVisibleTab` for other content or when direct video capture is unavailable, including blocked cross-origin or protected videos. Protected content may still be unreadable. Panel overlap is masked to prevent reading its own text, and the panel shows a warning.
+- Reads normally start at least 600 ms apart. Unchanged frames skip OCR; after three unchanged reads, polling slows to 1.5 s. Playback and seek events wake the loop.
+- Reading pauses while the tab is hidden or the area is outside the viewport.
+- An area anchored to a video, image, canvas, or iframe follows it through scrolling, zoom, and fullscreen. The panel follows too, retaining the user's placement relative to the area and preferred size.
 
-- **Unchanged frames.** Each capture gets a coarse brightness fingerprint. If it matches the last frame that was read, OCR is skipped. This is what a paused video looks like.
-- **Idle polling.** After 3 unchanged reads in a row, the interval grows to 1.5 s. A read with the area out of view counts as unchanged.
-- **Same line.** Two reads count as one line if they are at least 85% alike, ignoring case and punctuation. OCR noise does not start a new line.
-- **Noise.** A read needs at least two letters or digits. The panel clears the current line after two empty reads in a row.
+## OCR and translation
 
-## Subtitle size
-
-The first read that finds text sets the subtitle size. From then on, lines thinner than 60% of it are ignored. This removes logos, watermarks, and player controls. It also ignores a very small text (less than 12 px).
-
-Select the area while a subtitle is on screen. The first read only sets the size and is not shown.
-
-## Script detection
-
-With the source language set to Auto, the first OCR result with non-empty text selects the recognizer model for the session.
-
-An explicit source language uses its configured recognizer without running the script classifier.
-
-## Translation
-
-- Up to 3 translations run at once. When a fourth starts, the oldest is dropped and its line is marked as skipped.
-- Each line is sent with up to 3 earlier lines as context. Lines more than 5 s apart are treated as different scenes and not linked.
-- The LLM endpoint uses the context. Other providers ignore it.
-- Results are cached by line, context, and target language (last 100). The same line is not translated again.
-- A failed translation is retried every 5 s while its line is on screen.
-
-Every line is its own request. Lines can then be translated in parallel or skipped, and the context stays small in long sessions. It is also why llama.cpp's prompt cache only grows memory use. See the note in the [README](../README.md#live-translation).
+- Select the area while subtitles are visible. The first readable result with line measurements sets the subtitle size and is withheld. Later reads ignore lines thinner than 60% of that size, subject to a minimum thickness.
+- With source language **Auto**, the first non-empty OCR result selects the recognizer for the session. An explicit language bypasses script detection.
+- Similar lines are treated as one to tolerate OCR noise. Reads need at least two letters or digits; two empty reads clear the current line.
+- Each line is a separate translation request. Up to three run concurrently; a newer request cancels the oldest when full.
+- LLM requests include up to three earlier lines as context, stopping at gaps over 5 s. Other providers ignore context. A session cache reuses translations when the line, context, and target language match.
+- Failed reads retry at 1.5 s intervals. Three consecutive failures stop reading and show **Retry**. Translation failures do not stop reading and can retry after 5 s while the line remains current.
 
 ## Errors
 
@@ -58,11 +42,15 @@ Every line is its own request. Lines can then be translated in parallel or skipp
 
 ## Code
 
-| Part | File |
+Paths below are relative to `src/`.
+
+| Responsibility | File |
 |---|---|
-| Read loop, lines, context, cache | `src/entrypoints/content/live-session.ts` |
-| Same-line and noise checks | `src/entrypoints/content/live-text.ts` |
-| Following the video | `src/entrypoints/content/live-region.ts` |
-| Panel and placement | `src/entrypoints/content/live-panel.ts`, `src/entrypoints/content/live-layout.ts` |
-| Startup and wiring | `src/entrypoints/content/index.ts` |
-| Capture, OCR, and translation requests | `src/background/live.ts` |
+| Read loop, history, context, cache | `entrypoints/content/live-session.ts` |
+| Text matching and noise filtering | `entrypoints/content/live-text.ts` |
+| Video capture | `entrypoints/content/live-video.ts` |
+| Region tracking | `entrypoints/content/live-region.ts` |
+| Panel and placement | `entrypoints/content/live-panel.ts`, `entrypoints/content/live-layout.ts` |
+| Session wiring | `entrypoints/content/index.ts` |
+| Screenshot capture, OCR, translation | `background/live.ts` |
+| Frame comparison | `shared/frame-signature.ts` |

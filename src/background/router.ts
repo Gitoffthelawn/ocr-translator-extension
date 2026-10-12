@@ -38,9 +38,10 @@ import type {
 } from "./capture-store";
 import { createKeepAlive } from "./keepalive";
 import {
-  createLiveSessions,
   handleLiveFrameRequest,
+  handleLiveImageRequest,
   handleLiveTranslateRequest,
+  type LiveSessions,
 } from "./live";
 import { runPipeline, translateText } from "./pipeline";
 
@@ -82,7 +83,7 @@ export function startRouter(
     },
   );
 
-  const liveSessions = createLiveSessions();
+  const liveSessions: LiveSessions = new Map();
 
   onRequest(async (message, sender) => {
     await localeReady;
@@ -154,6 +155,13 @@ export function startRouter(
         ),
       );
     }
+    if (isRuntimeMessage(message, "LIVE_IMAGE_REQUEST")) {
+      return withKeepAlive(() =>
+        withAbort(message.requestId, (signal) =>
+          handleLiveImageRequest(dependencies, liveSessions, message, signal),
+        ),
+      );
+    }
     if (isRuntimeMessage(message, "LIVE_TRANSLATE_REQUEST")) {
       return withKeepAlive(() =>
         withAbort(message.requestId, (signal) =>
@@ -162,7 +170,7 @@ export function startRouter(
       );
     }
     if (isRuntimeMessage(message, "LIVE_STOP")) {
-      liveSessions.end(message.sessionId);
+      liveSessions.delete(message.sessionId);
       return undefined;
     }
     if (isRuntimeMessage(message, "PRELOAD_OCR")) {

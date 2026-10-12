@@ -24,6 +24,9 @@ declare const chrome: {
     captureVisibleTab(...args: unknown[]): Promise<string>;
     setZoom(tabId: number, zoomFactor: number): Promise<void>;
   };
+  runtime: {
+    onMessage: { addListener(listener: (message: unknown) => void): void };
+  };
   storage: { local: { set(values: Record<string, unknown>): Promise<void> } };
 };
 
@@ -58,6 +61,55 @@ const SUBTITLE_PAGE = `<!doctype html><html><head><meta charset="utf-8"><style>
       lines.map((line) => "<div>" + line + "</div>").join("");
   };
 </script></body></html>`;
+
+// The same stage with a real video. It plays a canvas that draws the subtitles
+// into its pixels, as burned-in subtitles are, over a moving background. The
+// video is `width` by `height`, and its picture fills the stage either way.
+function videoPage(width = 1000, height = 560): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+  body { margin: 0; background: #111; }
+  #stage { position: absolute; left: 140px; top: 40px; width: 1000px; height: 560px; background: #000; }
+  #video { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style></head><body>
+<button id="fullscreen" style="position:absolute;left:1180px;top:10px"
+  onclick="document.getElementById('stage').requestFullscreen()">Fullscreen</button>
+<div id="stage"><video id="video" muted playsinline></video></div>
+<script>
+  const canvas = document.createElement("canvas");
+  canvas.width = ${width};
+  canvas.height = ${height};
+  const scale = canvas.width / 1000;
+  const context = canvas.getContext("2d");
+  let lines = [];
+  function draw() {
+    const offset = ((Date.now() % 6000) / 6000) * canvas.width * 3;
+    const gradient = context.createLinearGradient(-offset, 0, canvas.width * 4 - offset, 0);
+    gradient.addColorStop(0, "#1d3557");
+    gradient.addColorStop(0.33, "#457b9d");
+    gradient.addColorStop(0.66, "#e63946");
+    gradient.addColorStop(1, "#1d3557");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.textAlign = "center";
+    context.font = "bold " + 34 * scale + "px sans-serif";
+    context.lineJoin = "round";
+    context.lineWidth = 6 * scale;
+    lines.forEach((line, index) => {
+      const y = canvas.height - (36 + (lines.length - 1 - index) * 42) * scale;
+      context.strokeStyle = "#000";
+      context.strokeText(line, canvas.width / 2, y);
+      context.fillStyle = "#fff";
+      context.fillText(line, canvas.width / 2, y);
+    });
+  }
+  window.setSubtitle = (next) => { lines = next; };
+  draw();
+  setInterval(draw, 40);
+  const video = document.getElementById("video");
+  video.srcObject = canvas.captureStream(25);
+  video.play();
+</script></body></html>`;
+}
 
 interface TranslationServer {
   port: number;
@@ -117,6 +169,7 @@ interface SessionOptions {
   /** Screenshot pixels per CSS pixel. Forced with a browser flag: headless
    * Chromium otherwise captures at 1x whatever the emulated density. */
   pixelRatio?: number;
+  html?: string;
 }
 
 async function openSession(options: SessionOptions = {}): Promise<Session> {
@@ -130,6 +183,7 @@ async function openSession(options: SessionOptions = {}): Promise<Session> {
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
       `--force-device-scale-factor=${options.pixelRatio ?? 1}`,
+      "--autoplay-policy=no-user-gesture-required",
     ],
   });
   const server = await startTranslationServer();
@@ -157,7 +211,7 @@ async function openSession(options: SessionOptions = {}): Promise<Session> {
 
   const page = await context.newPage();
   await page.route(`${PAGE_URL}**`, (route) =>
-    route.fulfill({ contentType: "text/html", body: SUBTITLE_PAGE }),
+    route.fulfill({ contentType: "text/html", body: options.html ?? SUBTITLE_PAGE }),
   );
   await page.goto(PAGE_URL);
   await page.bringToFront();
@@ -204,6 +258,41 @@ function countCaptures(worker: Worker): Promise<void> {
 
 const capturesSoFar = (worker: Worker): Promise<number> =>
   worker.evaluate(() => (globalThis as Counter).__captures ?? 0);
+
+interface SentImage {
+  mediaType: string;
+  width: number;
+  height: number;
+}
+
+type ImageSizes = { __imageSizes?: SentImage[] };
+
+/** Records each video frame sent to be read from now on. */
+function recordImageSizes(worker: Worker): Promise<void> {
+  return worker.evaluate(() => {
+    const record = globalThis as ImageSizes;
+    record.__imageSizes = [];
+    chrome.runtime.onMessage.addListener((message) => {
+      const { type, image } = message as {
+        type?: string;
+        image?: { data: string; mediaType: string };
+      };
+      if (type !== "LIVE_IMAGE_REQUEST" || !image) {
+        return;
+      }
+      const { mediaType } = image;
+      void fetch(`data:${mediaType};base64,${image.data}`)
+        .then((response) => response.blob())
+        .then((blob) => createImageBitmap(blob))
+        .then(({ width, height }) =>
+          record.__imageSizes?.push({ mediaType, width, height }),
+        );
+    });
+  });
+}
+
+const imageSizes = (worker: Worker) =>
+  worker.evaluate(() => (globalThis as ImageSizes).__imageSizes ?? []);
 
 const translation = (page: Page) =>
   page.locator(".ocr-translate-live-translation");
@@ -348,6 +437,8 @@ test("does not read its own panel when the panel covers the region", async () =>
     // of the page's own button, which would be read as well.
     await startLiveTranslation(session, { x1: 10, y1: 50, x2: 1170, y2: 710 });
     expect(await overlaps(page, ".ocr-translate-live", ".ocr-translate-live-region")).toBe(true);
+    // The page is read from screenshots, so the panel says what it hides.
+    await expect(page.locator(".ocr-translate-live-warning")).toBeVisible();
 
     await showSubtitle(page, "See you tomorrow.");
     await expect(translation(page)).toHaveText("[uk] See you tomorrow.", {
@@ -356,6 +447,162 @@ test("does not read its own panel when the panel covers the region", async () =>
     // Long enough for several more reads of the panel's own text.
     await page.waitForTimeout(4_000);
 
+    expect(server.requests).toEqual(["See you tomorrow."]);
+  } finally {
+    await session.context.close();
+    server.close();
+  }
+});
+
+test("reads a video from its frames, so the panel can cover the subtitles", async () => {
+  const session = await openSession({ html: videoPage() });
+  const { page, worker, server } = session;
+  try {
+    await startLiveTranslation(session);
+    // Drag the panel over the subtitles, which are drawn about y = 550.
+    const title = await page.locator(".ocr-translate-live-title").boundingBox();
+    const panel = await page.locator(".ocr-translate-live").boundingBox();
+    if (!title || !panel) {
+      throw new Error("The panel must be on screen.");
+    }
+    const dy = 550 - (panel.y + panel.height / 2);
+    await page.mouse.move(title.x + 5, title.y + 5);
+    await page.mouse.down();
+    await page.mouse.move(title.x + 5, title.y + 5 + dy, { steps: 5 });
+    await page.mouse.up();
+    // Where the subtitle is drawn, the panel is on top now.
+    expect(
+      await page.evaluate(() => document.elementFromPoint(640, 550)?.localName),
+    ).toBe("ocr-translate-ui");
+
+    await countCaptures(worker);
+    await showSubtitle(page, "See you tomorrow.");
+    await expect(translation(page)).toHaveText("[uk] See you tomorrow.", {
+      timeout: 20_000,
+    });
+
+    expect(await capturesSoFar(worker)).toBe(0);
+    // Nothing is hidden, so there is nothing to warn about.
+    await expect(page.locator(".ocr-translate-live-warning")).toBeHidden();
+
+    // In full screen the subtitles are larger and lower, and the panel stays
+    // over them.
+    await page.click("#fullscreen");
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.id)).toBe("stage");
+    await expect
+      .poll(() => page.evaluate(() => document.elementFromPoint(640, 655)?.localName))
+      .toBe("ocr-translate-ui");
+    await showSubtitle(page, "Where are the keys?");
+    await expect(translation(page)).toHaveText(
+      ["[uk] See you tomorrow.", "[uk] Where are the keys?"],
+      { timeout: 10_000 },
+    );
+    expect(server.requests).toEqual(["See you tomorrow.", "Where are the keys?"]);
+  } finally {
+    await session.context.close();
+    server.close();
+  }
+});
+
+test("reads a video above 1080p at 1080p", async () => {
+  // A 4K video, drawn the same size on the page.
+  const session = await openSession({ html: videoPage(3840, 2150) });
+  const { page, worker, server } = session;
+  try {
+    await recordImageSizes(worker);
+    await startLiveTranslation(session);
+
+    await showSubtitle(page, "We should walk to the market");
+    await expect(translation(page)).toHaveText("[uk] We should walk to the market", {
+      timeout: 20_000,
+    });
+
+    // The region is about 3456 by 461 pixels of the video, and is read at half
+    // that.
+    const sizes = await imageSizes(worker);
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const { mediaType, width, height } of sizes) {
+      expect(mediaType).toBe("image/jpeg");
+      expect(width).toBeGreaterThan(1700);
+      expect(width).toBeLessThan(1760);
+      expect(height).toBeGreaterThan(220);
+      expect(height).toBeLessThan(240);
+    }
+    expect(server.requests).toEqual(["We should walk to the market"]);
+  } finally {
+    await session.context.close();
+    server.close();
+  }
+});
+
+test("reads a video it may not read from screenshots", async () => {
+  const session = await openSession();
+  const { page, worker, server } = session;
+  try {
+    // A video from another site that does not allow reading its pixels. The
+    // page can show it, and its subtitle is part of the picture.
+    const webm = await page.evaluate(async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1000;
+      canvas.height = 560;
+      const context = canvas.getContext("2d")!;
+      const draw = () => {
+        context.fillStyle = `hsl(${(Date.now() / 20) % 360}, 40%, 30%)`;
+        context.fillRect(0, 0, 1000, 560);
+        context.textAlign = "center";
+        context.font = "bold 34px sans-serif";
+        context.lineJoin = "round";
+        context.lineWidth = 6;
+        context.strokeStyle = "#000";
+        context.strokeText("See you tomorrow.", 500, 524);
+        context.fillStyle = "#fff";
+        context.fillText("See you tomorrow.", 500, 524);
+      };
+      draw();
+      const timer = setInterval(draw, 40);
+      const recorder = new MediaRecorder(canvas.captureStream(25), {
+        mimeType: "video/webm",
+      });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => chunks.push(event.data);
+      const stopped = new Promise((done) => (recorder.onstop = done));
+      recorder.start();
+      await new Promise((done) => setTimeout(done, 2000));
+      recorder.stop();
+      await stopped;
+      clearInterval(timer);
+      const bytes = new Uint8Array(await new Blob(chunks).arrayBuffer());
+      let binary = "";
+      for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+      }
+      return btoa(binary);
+    });
+    await page.route("http://media.test/**", (route) =>
+      route.fulfill({ contentType: "video/webm", body: Buffer.from(webm, "base64") }),
+    );
+    await page.route(`${PAGE_URL}player`, (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: `<!doctype html><body style="margin:0;background:#111">
+          <video id="video" src="http://media.test/subtitle.webm" muted autoplay loop playsinline
+            style="position:absolute;left:140px;top:40px;width:1000px;height:560px"></video>
+        </body>`,
+      }),
+    );
+    await page.goto(`${PAGE_URL}player`);
+    await page.waitForFunction(
+      () => (document.getElementById("video") as HTMLVideoElement).readyState >= 2,
+    );
+    // Let the content script finish starting.
+    await page.waitForTimeout(500);
+
+    await countCaptures(worker);
+    await startLiveTranslation(session);
+    await expect(translation(page)).toHaveText("[uk] See you tomorrow.", {
+      timeout: 20_000,
+    });
+    expect(await capturesSoFar(worker)).toBeGreaterThan(0);
     expect(server.requests).toEqual(["See you tomorrow."]);
   } finally {
     await session.context.close();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Rect } from "@/shared/types";
 import {
+  anchorPanel,
   clampPanelBox,
   growRect,
   PANEL_GAP,
@@ -9,6 +10,7 @@ import {
   PANEL_MIN_HEIGHT,
   PANEL_MIN_WIDTH,
   PANEL_WIDTH,
+  placeAnchoredPanel,
   placeLivePanel,
   rectsOverlap,
   resizePanelBox,
@@ -82,32 +84,16 @@ describe("placeLivePanel", () => {
     expect(placement.left).toBe(viewport.width - placement.width - PANEL_MARGIN);
   });
 
-  it("goes beside a region that spans the viewport's height", () => {
+  it("goes to the top edge of a region that spans the viewport's height, whatever the room beside it", () => {
     const region = { x: 20, y: 20, width: 500, height: 680 };
     const placement = placeLivePanel(region, viewport);
 
-    expect(placement.left).toBe(520 + PANEL_GAP);
-    expect(placement.top).toBe(20);
-    expect(rectsOverlap(rectOf(placement), growRect(region, 4))).toBe(false);
-  });
-
-  it("goes to the left when only the left has room", () => {
-    const region = { x: 760, y: 20, width: 500, height: 680 };
-    const placement = placeLivePanel(region, viewport);
-
-    expect(placement.left + placement.width).toBe(760 - PANEL_GAP);
-    expect(rectsOverlap(rectOf(placement), growRect(region, 4))).toBe(false);
-  });
-
-  it("shrinks to the room beside the region", () => {
-    const region = { x: 20, y: 20, width: 980, height: 680 };
-    const placement = placeLivePanel(region, viewport);
-
-    expect(placement.left).toBe(1000 + PANEL_GAP);
-    expect(placement.width).toBe(
-      viewport.width - (1000 + PANEL_GAP) - PANEL_MARGIN,
-    );
-    expect(placement.width).toBeLessThan(PANEL_WIDTH);
+    expect(placement).toEqual({
+      left: (viewport.width - PANEL_WIDTH) / 2,
+      top: PANEL_MARGIN,
+      width: PANEL_WIDTH,
+      height: PANEL_HEIGHT,
+    });
   });
 
   it("falls back to the top edge, away from subtitles, when nothing fits", () => {
@@ -220,6 +206,53 @@ describe("resizePanelBox", () => {
       top: PANEL_MARGIN,
       width: 400 - PANEL_MARGIN,
       height: 320 - PANEL_MARGIN,
+    });
+  });
+});
+
+describe("anchorPanel", () => {
+  const region = { x: 200, y: 400, width: 800, height: 120 };
+  // The same region in full screen: larger, and lower down.
+  const fullScreen = { x: 100, y: 800, width: 1600, height: 240 };
+  const follow = (box: PanelBox, to: Rect) =>
+    placeAnchoredPanel(anchorPanel(box, region), to);
+
+  it("puts the panel back where it was while the region stays", () => {
+    const box = { left: 340, top: 250, width: 480, height: 180 };
+
+    expect(follow(box, region)).toEqual(box);
+  });
+
+  it("keeps a panel over the same part of a region that grows", () => {
+    // Over the subtitles, a little left of the middle.
+    const box = { left: 300, top: 380, width: 480, height: 180 };
+
+    expect(follow(box, fullScreen)).toEqual({
+      left: 100 + 1600 * (340 / 800) - 240,
+      top: 800 + 240 * (70 / 120) - 90,
+      width: 480,
+      height: 180,
+    });
+  });
+
+  it("keeps its distance from the edge it is past", () => {
+    // Above the region, with a 20 px gap, and centred on it.
+    const above = { left: 360, top: 200, width: 480, height: 180 };
+    expect(follow(above, fullScreen)).toEqual({
+      left: 100 + 800 - 240,
+      top: 800 - 20 - 180,
+      width: 480,
+      height: 180,
+    });
+
+    // Right of the region, level with its top. Its middle is level with the
+    // region, so up and down it keeps its share.
+    const right = { left: 1012, top: 400, width: 300, height: 180 };
+    expect(follow(right, fullScreen)).toEqual({
+      left: 100 + 1600 + 12,
+      top: 800 + 240 * (90 / 120) - 90,
+      width: 300,
+      height: 180,
     });
   });
 });

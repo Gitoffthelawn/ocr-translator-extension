@@ -550,6 +550,54 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
     });
   });
 
+  test(`${name}: the live panel warns while it covers a region read from screenshots`, async () => {
+    await withPage(browserType, name, { width: 800, height: 600 }, async (page) => {
+      await page.setContent(`<body style="margin:0"></body>`);
+      await page.addScriptTag({
+        type: "module",
+        content: `${panelCode}
+          ${uiSetup}
+          window.panel = showLivePanel(container, { x: 100, y: 100, width: 600, height: 80 }, {
+            onPause() {}, onResume() {}, onSelectNewRegion() {}, onRetry() {}, onClose() {},
+            onTextScaleChange() {},
+          }, 1);
+          window.panel.render({ status: "running", lines: [] });
+        `,
+      });
+      await page.waitForFunction(() => Boolean(window.panel));
+      await settle(page);
+      const warning = page.locator(".ocr-translate-live-warning");
+      const drag = async (dy) => {
+        const start = await box(page, ".ocr-translate-live");
+        const grip = { x: start.x + 60, y: start.y + 14 };
+        await page.mouse.move(grip.x, grip.y);
+        await page.mouse.down();
+        await page.mouse.move(grip.x, grip.y + dy, { steps: 5 });
+        await page.mouse.up();
+      };
+
+      // Beside the region, the panel hides none of it.
+      assert.equal(await warning.isVisible(), false);
+
+      // Over the region, the part it covers is not read.
+      await drag(-120);
+      assert.equal(await warning.isVisible(), true);
+      assert.equal(await warning.textContent(), "livePanelCoversRegion");
+      // The status stays above it.
+      const note = await box(page, ".ocr-translate-live-note");
+      assert.ok(note.y + note.height <= (await box(page, ".ocr-translate-live-warning")).y);
+
+      // A region read from a video is never hidden by the panel.
+      await page.evaluate(() => window.panel.setReadsScreen(false));
+      assert.equal(await warning.isVisible(), false);
+      await page.evaluate(() => window.panel.setReadsScreen(true));
+      assert.equal(await warning.isVisible(), true);
+
+      await drag(120);
+      assert.equal(await warning.isVisible(), false);
+    });
+  });
+
   test(`${name}: the live frame and panel go where the region moves`, async () => {
     await withPage(browserType, name, { width: 800, height: 600 }, async (page) => {
       await page.setContent(`<body style="margin:0"></body>`);
@@ -586,17 +634,29 @@ for (const [name, browserType] of Object.entries({ chromium, firefox })) {
       const below = await panel();
       assert.equal(below.y + below.height, 600 - 8);
 
-      // A panel the user moved stays put, and the frame still follows.
+      const drag = async (dy) => {
+        const start = await panel();
+        await page.mouse.move(start.x + 60, start.y + 14);
+        await page.mouse.down();
+        await page.mouse.move(start.x + 60, start.y + 14 + dy, { steps: 5 });
+        await page.mouse.up();
+      };
+
+      // A panel the user moved below the region keeps its distance from it.
       await move({ x: 100, y: 100, width: 600, height: 80 });
-      const start = await panel();
-      await page.mouse.move(start.x + 60, start.y + 14);
-      await page.mouse.down();
-      await page.mouse.move(start.x + 60, start.y + 114, { steps: 5 });
-      await page.mouse.up();
-      const placed = await panel();
+      await drag(100);
+      assert.deepEqual(await panel(), { x: 160, y: 292, width: 480, height: 180 });
       await move({ x: 150, y: 50, width: 400, height: 60 });
-      assert.deepEqual(await panel(), placed);
+      assert.deepEqual(await panel(), { x: 110, y: 222, width: 480, height: 180 });
       assert.deepEqual(await frame(), { x: 146, y: 46, width: 408, height: 68 });
+
+      // One moved over the region stays over the same part of it as the region
+      // grows, such as in full screen.
+      await move({ x: 100, y: 100, width: 600, height: 80 });
+      await drag(-250);
+      assert.deepEqual(await panel(), { x: 160, y: 42, width: 480, height: 180 });
+      await move({ x: 0, y: 200, width: 800, height: 160 });
+      assert.deepEqual(await panel(), { x: 160, y: 174, width: 480, height: 180 });
 
       await settledFrame.waitFor({ timeout: 5000 });
     });

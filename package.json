@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:browser:chrome": "playwright test",
     "test:browser:common": "node --test tests/browser/common/*.test.mjs",
-    "test:browser:firefox": "node --test tests/browser/firefox/ocr-host.test.mjs",
+    "test:browser:firefox": "node --test tests/browser/firefox/*.test.mjs",
     "test:watch": "vitest",
     "verify:models": "node scripts/verify-models.mjs",
     "quantize:models": "scripts/quantize-models.sh"
