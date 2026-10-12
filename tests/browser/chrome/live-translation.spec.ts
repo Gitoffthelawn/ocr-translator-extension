@@ -504,7 +504,7 @@ test("reads a video from its frames, so the panel can cover the subtitles", asyn
   }
 });
 
-test("reads a video above 1080p at 1080p", async () => {
+test("reads a video above 720p at 720p", async () => {
   // A 4K video, drawn the same size on the page.
   const session = await openSession({ html: videoPage(3840, 2150) });
   const { page, worker, server } = session;
@@ -517,16 +517,16 @@ test("reads a video above 1080p at 1080p", async () => {
       timeout: 20_000,
     });
 
-    // The region is about 3456 by 461 pixels of the video, and is read at half
-    // that.
+    // The region is about 3456 by 461 pixels of the video, read at one third
+    // of that size (about 1152 by 154).
     const sizes = await imageSizes(worker);
     expect(sizes.length).toBeGreaterThan(0);
     for (const { mediaType, width, height } of sizes) {
       expect(mediaType).toBe("image/jpeg");
-      expect(width).toBeGreaterThan(1700);
-      expect(width).toBeLessThan(1760);
-      expect(height).toBeGreaterThan(220);
-      expect(height).toBeLessThan(240);
+      expect(width).toBeGreaterThan(1140);
+      expect(width).toBeLessThan(1170);
+      expect(height).toBeGreaterThan(150);
+      expect(height).toBeLessThan(160);
     }
     expect(server.requests).toEqual(["We should walk to the market"]);
   } finally {
